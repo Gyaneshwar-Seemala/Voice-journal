@@ -1606,7 +1606,9 @@
     function openVaultScreen(mode) {
       pinMode = mode;
       pinBuffer = '';
-      firstSetupPin = '';
+      if (mode !== 'setup2') {
+        firstSetupPin = '';
+      }
       updatePinDots();
       document.getElementById('vaultError').textContent = '';
 
