@@ -1,0 +1,1800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#1C1A17" id="themeColorMeta" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Voice Journal</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" href="./icon-192.png" />
+  <link rel="apple-touch-icon" href="./icon-192.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #F6F3EC;
+      --surface: #FDFBF7;
+      --surface-alt: #EDE9DF;
+      --text: #1C1A17;
+      --text-muted: #78736A;
+      --text-subtle: #A39E93;
+      --border: #E5E0D5;
+      --accent: #1C1A17;
+      --accent-fg: #F6F3EC;
+      --pill-bg: #FDFBF7;
+      --shadow: 0 10px 30px rgba(28, 26, 23, 0.08);
+      --danger: #C84B31;
+      --success: #3B7A57;
+    }
+
+    [data-theme="dark"] {
+      --bg: #141311;
+      --surface: #1E1C19;
+      --surface-alt: #282521;
+      --text: #F2EFE9;
+      --text-muted: #9E988E;
+      --text-subtle: #69645C;
+      --border: #2E2B26;
+      --accent: #F2EFE9;
+      --accent-fg: #141311;
+      --pill-bg: #22201C;
+      --shadow: 0 12px 34px rgba(0, 0, 0, 0.45);
+      --danger: #E06D53;
+      --success: #5EA67D;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      height: 100%;
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      transition: background-color 0.25s ease, color 0.25s ease;
+      overflow-x: hidden;
+    }
+
+    h1, h2, h3, .serif {
+      font-family: 'Fraunces', Georgia, serif;
+      letter-spacing: -0.02em;
+    }
+
+    .app-shell {
+      max-width: 480px;
+      margin: 0 auto;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      padding: calc(env(safe-area-inset-top, 16px) + 12px) 20px calc(env(safe-area-inset-bottom, 20px) + 104px);
+    }
+
+    /* Top Header */
+    .top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+
+    .page-title {
+      font-size: 32px;
+      font-weight: 700;
+      line-height: 1.1;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .icon-circle-btn {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: transform 0.15s ease, background-color 0.2s ease;
+    }
+
+    .icon-circle-btn:active {
+      transform: scale(0.94);
+    }
+
+    /* Views */
+    .view {
+      display: none;
+      flex: 1;
+      flex-direction: column;
+      animation: fadeIn 0.22s ease;
+    }
+
+    .view.active {
+      display: flex;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Empty State */
+    .empty-state {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 40px 16px;
+    }
+
+    .empty-icon {
+      color: var(--text-subtle);
+      margin-bottom: 18px;
+    }
+
+    .empty-state h2 {
+      font-size: 22px;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+
+    .empty-state p {
+      font-size: 14.5px;
+      line-height: 1.55;
+      color: var(--text-muted);
+      max-width: 290px;
+    }
+
+    /* Search Bar */
+    .search-wrap {
+      display: none;
+      margin-bottom: 16px;
+    }
+
+    .search-wrap.open {
+      display: block;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 13px 16px;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 15px;
+      font-family: inherit;
+      outline: none;
+    }
+
+    /* Journal Cards */
+    .entries-list {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .entry-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 18px 20px;
+      transition: transform 0.15s ease;
+      cursor: pointer;
+    }
+
+    .entry-card:active {
+      transform: scale(0.99);
+    }
+
+    .entry-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .mood-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--surface-alt);
+      color: var(--text);
+      font-weight: 600;
+      font-size: 11.5px;
+    }
+
+    .entry-title {
+      font-size: 19px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      line-height: 1.25;
+    }
+
+    .entry-excerpt {
+      font-size: 14.5px;
+      line-height: 1.6;
+      color: var(--text-muted);
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      white-space: pre-line;
+    }
+
+    .entry-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 12px;
+    }
+
+    .tag-chip {
+      font-size: 11.5px;
+      padding: 3px 9px;
+      border-radius: 8px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+
+    /* Calendar View */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 16px 18px;
+    }
+
+    .stat-num {
+      font-family: 'Fraunces', serif;
+      font-size: 26px;
+      font-weight: 700;
+      margin-bottom: 2px;
+    }
+
+    .stat-label {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .calendar-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 20px 16px;
+      margin-bottom: 22px;
+    }
+
+    .cal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 8px;
+      margin-bottom: 18px;
+    }
+
+    .cal-month {
+      font-size: 17px;
+      font-weight: 600;
+    }
+
+    .cal-nav-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 18px;
+      padding: 6px 10px;
+      cursor: pointer;
+    }
+
+    .cal-weekdays, .cal-days {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      text-align: center;
+    }
+
+    .cal-weekdays {
+      font-size: 12px;
+      color: var(--text-subtle);
+      margin-bottom: 10px;
+    }
+
+    .cal-day {
+      aspect-ratio: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 500;
+      border-radius: 50%;
+      cursor: pointer;
+      position: relative;
+      margin: 2px;
+    }
+
+    .cal-day.selected {
+      background: var(--accent);
+      color: var(--accent-fg);
+      font-weight: 700;
+    }
+
+    .cal-day.has-entry::after {
+      content: '';
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: currentColor;
+      position: absolute;
+      bottom: 5px;
+      opacity: 0.75;
+    }
+
+    .day-section-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+
+    /* Chat View */
+    .chat-hero {
+      text-align: center;
+      padding: 18px 8px 24px;
+    }
+
+    .chat-hero h2 {
+      font-size: 24px;
+      line-height: 1.25;
+      margin-bottom: 10px;
+    }
+
+    .chat-hero p {
+      font-size: 13.5px;
+      line-height: 1.5;
+      color: var(--text-muted);
+      max-width: 300px;
+      margin: 0 auto 22px;
+    }
+
+    .prompt-pills {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .prompt-pill {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 12px 20px;
+      border-radius: 999px;
+      font-family: 'Fraunces', serif;
+      font-size: 14.5px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: transform 0.15s ease;
+    }
+
+    .prompt-pill:active {
+      transform: scale(0.97);
+    }
+
+    .chat-messages {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .chat-bubble {
+      padding: 14px 16px;
+      border-radius: 20px;
+      font-size: 14.5px;
+      line-height: 1.55;
+      max-width: 88%;
+      white-space: pre-line;
+    }
+
+    .chat-bubble.user {
+      align-self: flex-end;
+      background: var(--accent);
+      color: var(--accent-fg);
+      border-bottom-right-radius: 6px;
+    }
+
+    .chat-bubble.ai {
+      align-self: flex-start;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-bottom-left-radius: 6px;
+    }
+
+    .chat-composer {
+      margin-top: auto;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding-top: 12px;
+    }
+
+    .chat-input {
+      flex: 1;
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 14px 18px;
+      color: var(--text);
+      font-size: 14.5px;
+      font-family: inherit;
+      outline: none;
+    }
+
+    .chat-send-btn {
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: var(--accent-fg);
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    /* Insights View */
+    .insight-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    .insight-card h3 {
+      font-size: 18px;
+      margin-bottom: 6px;
+    }
+
+    .insight-sub {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+
+    .mood-bars {
+      display: flex;
+      align-items: flex-end;
+      gap: 10px;
+      height: 120px;
+      padding-top: 16px;
+    }
+
+    .mood-bar-col {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      height: 100%;
+      justify-content: flex-end;
+    }
+
+    .mood-bar-fill {
+      width: 100%;
+      max-width: 28px;
+      background: var(--accent);
+      border-radius: 8px 8px 4px 4px;
+      min-height: 12px;
+      transition: height 0.4s ease;
+    }
+
+    .mood-bar-label {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .reflection-body {
+      font-size: 14.5px;
+      line-height: 1.65;
+      color: var(--text);
+      white-space: pre-line;
+    }
+
+    .primary-btn {
+      width: 100%;
+      padding: 14px 18px;
+      border-radius: 999px;
+      border: none;
+      background: var(--accent);
+      color: var(--accent-fg);
+      font-family: inherit;
+      font-size: 14.5px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 14px;
+    }
+
+    .secondary-btn {
+      width: 100%;
+      padding: 13px 16px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: var(--surface-alt);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    /* Floating Bottom Navigation Pill */
+    .bottom-nav-wrap {
+      position: fixed;
+      bottom: calc(env(safe-area-inset-bottom, 14px) + 12px);
+      left: 50%;
+      transform: translateX(-50%);
+      width: calc(100% - 32px);
+      max-width: 430px;
+      z-index: 40;
+    }
+
+    .bottom-nav {
+      background: var(--pill-bg);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      border-radius: 999px;
+      padding: 7px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .nav-item {
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      height: 44px;
+      padding: 0 12px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .nav-item span.nav-label {
+      display: none;
+    }
+
+    .nav-item.active {
+      background: var(--accent);
+      color: var(--accent-fg);
+      padding: 0 16px;
+    }
+
+    .nav-item.active span.nav-label {
+      display: inline;
+    }
+
+    .mic-fab {
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: var(--accent-fg);
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+      transition: transform 0.15s ease;
+      flex-shrink: 0;
+    }
+
+    .mic-fab:active {
+      transform: scale(0.92);
+    }
+
+    /* Fullscreen Record Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      z-index: 100;
+      display: none;
+      flex-direction: column;
+      padding: calc(env(safe-area-inset-top, 16px) + 12px) 24px calc(env(safe-area-inset-bottom, 20px) + 20px);
+    }
+
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    .record-center {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .record-heading {
+      font-size: 32px;
+      line-height: 1.15;
+      margin-bottom: 14px;
+    }
+
+    .record-prompt {
+      font-family: 'Fraunces', serif;
+      font-size: 16.5px;
+      color: var(--text-muted);
+      max-width: 300px;
+      line-height: 1.45;
+      margin-bottom: 8px;
+    }
+
+    .tap-another {
+      font-size: 12.5px;
+      color: var(--text-subtle);
+      background: none;
+      border: none;
+      cursor: pointer;
+      margin-bottom: 34px;
+    }
+
+    /* Circular Dial */
+    .dial-container {
+      position: relative;
+      width: 220px;
+      height: 220px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 24px;
+    }
+
+    .dial-ring-text {
+      position: absolute;
+      inset: 0;
+      animation: spinSlow 24s linear infinite;
+    }
+
+    .recording .dial-ring-text {
+      animation-duration: 8s;
+    }
+
+    @keyframes spinSlow {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .pulse-circle {
+      position: absolute;
+      width: 112px;
+      height: 112px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      pointer-events: none;
+    }
+
+    .pulse-circle.p2 { width: 136px; height: 136px; opacity: 0.7; }
+    .pulse-circle.p3 { width: 160px; height: 160px; opacity: 0.4; }
+
+    .recording .pulse-circle {
+      border-color: var(--danger);
+      animation: pulseWave 1.6s ease-out infinite;
+    }
+
+    @keyframes pulseWave {
+      0% { transform: scale(0.95); opacity: 0.8; }
+      100% { transform: scale(1.28); opacity: 0; }
+    }
+
+    .record-core-btn {
+      width: 88px;
+      height: 88px;
+      border-radius: 50%;
+      background: var(--accent);
+      border: none;
+      cursor: pointer;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+
+    .recording .record-core-btn {
+      background: var(--danger);
+      border-radius: 26px;
+      width: 76px;
+      height: 76px;
+    }
+
+    .live-transcript-box {
+      width: 100%;
+      max-width: 380px;
+      min-height: 72px;
+      max-height: 150px;
+      overflow-y: auto;
+      font-size: 14.5px;
+      line-height: 1.55;
+      color: var(--text);
+      padding: 12px 16px;
+      border-radius: 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      display: none;
+      text-align: left;
+    }
+
+    .live-transcript-box.visible {
+      display: block;
+    }
+
+    .write-instead-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 14px;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      margin: 0 auto;
+    }
+
+    .manual-write-area {
+      display: none;
+      flex-direction: column;
+      width: 100%;
+      max-width: 400px;
+      gap: 12px;
+    }
+
+    .manual-write-area.open {
+      display: flex;
+    }
+
+    .manual-textarea {
+      width: 100%;
+      min-height: 180px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      padding: 16px;
+      font-family: inherit;
+      font-size: 15px;
+      line-height: 1.6;
+      resize: none;
+      outline: none;
+    }
+
+    /* Sheet / Detail & Settings Modals */
+    .sheet-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.45);
+      z-index: 120;
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+    }
+
+    .sheet-overlay.open {
+      display: flex;
+    }
+
+    .sheet-card {
+      background: var(--bg);
+      width: 100%;
+      max-width: 480px;
+      max-height: 88dvh;
+      overflow-y: auto;
+      border-radius: 28px 28px 0 0;
+      padding: 24px 22px calc(env(safe-area-inset-bottom, 20px) + 24px);
+      border-top: 1px solid var(--border);
+    }
+
+    .sheet-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
+    }
+
+    .field-group {
+      margin-bottom: 16px;
+    }
+
+    .field-label {
+      display: block;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .text-input {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 14px;
+    }
+
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      margin-bottom: 16px;
+    }
+
+    .toast {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-80px);
+      background: var(--accent);
+      color: var(--accent-fg);
+      padding: 10px 18px;
+      border-radius: 999px;
+      font-size: 13.5px;
+      font-weight: 600;
+      z-index: 200;
+      transition: transform 0.25s ease;
+      box-shadow: var(--shadow);
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+    }
+  </style>
+</head>
+<body>
+  <div class="toast" id="toast">Saved</div>
+
+  <div class="app-shell">
+    <!-- TAB 1: JOURNAL -->
+    <section class="view active" id="view-journal">
+      <div class="top-bar">
+        <h1 class="page-title">Journal</h1>
+        <div class="header-actions">
+          <button class="icon-circle-btn" id="btnToggleSearch" aria-label="Search">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          </button>
+          <button class="icon-circle-btn" id="btnOpenSettings" aria-label="Settings">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="search-wrap" id="searchWrap">
+        <input type="text" class="search-input" id="searchInput" placeholder="Search memories, moods, or words..." />
+      </div>
+
+      <div id="journalEmpty" class="empty-state">
+        <div class="empty-icon">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        </div>
+        <h2>Your journal begins here</h2>
+        <p>Tap the circle below to record your first reflection. Speak freely for a minute about your day.</p>
+      </div>
+
+      <div id="journalList" class="entries-list"></div>
+    </section>
+
+    <!-- TAB 2: CALENDAR -->
+    <section class="view" id="view-calendar">
+      <div class="top-bar">
+        <h1 class="page-title">Calendar</h1>
+        <button class="icon-circle-btn" onclick="switchTab('journal')" aria-label="Back to Journal">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        </button>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-num" id="statStreak">0</div>
+          <div class="stat-label">day streak</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" id="statDays">0</div>
+          <div class="stat-label">days journaled</div>
+        </div>
+      </div>
+
+      <div class="calendar-card">
+        <div class="cal-header">
+          <button class="cal-nav-btn" id="calPrev">&lt;</button>
+          <div class="cal-month serif" id="calMonthLabel">November 2026</div>
+          <button class="cal-nav-btn" id="calNext">&gt;</button>
+        </div>
+        <div class="cal-weekdays">
+          <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+        </div>
+        <div class="cal-days" id="calDaysGrid"></div>
+      </div>
+
+      <h3 class="day-section-title" id="selectedDayTitle">Today</h3>
+      <div id="selectedDayEntries" class="entries-list"></div>
+    </section>
+
+    <!-- TAB 3: CHAT -->
+    <section class="view" id="view-chat">
+      <div class="top-bar">
+        <h1 class="page-title">Chat</h1>
+        <button class="icon-circle-btn" id="btnClearChat" aria-label="Clear chat">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        </button>
+      </div>
+
+      <div id="chatEmptyHero" class="chat-hero">
+        <h2>A conversation with<br>your past self.</h2>
+        <p>Your entries stay private — only the relevant moments are read to answer.</p>
+        <div class="prompt-pills">
+          <button class="prompt-pill" onclick="sendChatPrompt('When was I happiest?')">When was I happiest?</button>
+          <button class="prompt-pill" onclick="sendChatPrompt('What have I learned recently?')">What have I learned recently?</button>
+          <button class="prompt-pill" onclick="sendChatPrompt('What have I been grateful for?')">What have I been grateful for?</button>
+          <button class="prompt-pill" onclick="sendChatPrompt('Summarize my week')">Summarize my week</button>
+        </div>
+      </div>
+
+      <div id="chatMessages" class="chat-messages"></div>
+
+      <div class="chat-composer">
+        <input type="text" class="chat-input" id="chatInput" placeholder="Ask about your past..." />
+        <button class="chat-send-btn" id="btnSendChat" aria-label="Send">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+        </button>
+      </div>
+    </section>
+
+    <!-- TAB 4: INSIGHTS -->
+    <section class="view" id="view-insights">
+      <div class="top-bar">
+        <h1 class="page-title">Insights</h1>
+      </div>
+
+      <div id="insightsEmpty" class="empty-state">
+        <div class="empty-icon">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="10" width="3" height="10" rx="1"/><rect x="10.5" y="6" width="3" height="14" rx="1"/><rect x="17" y="12" width="3" height="8" rx="1"/></svg>
+        </div>
+        <h2>Insights unfold with time</h2>
+        <p>Record a few reflections to see your mood take shape, month by month.</p>
+      </div>
+
+      <div id="insightsContent" style="display:none;">
+        <div class="insight-card">
+          <h3>Mood Trajectory</h3>
+          <div class="insight-sub">Recent entries scored on a 1–10 emotional baseline</div>
+          <div class="mood-bars" id="moodBars"></div>
+        </div>
+
+        <div class="insight-card">
+          <h3>Life Reflection</h3>
+          <div class="insight-sub" id="reflectionUpdatedAt">A synthesis of your recent thoughts & patterns</div>
+          <div class="reflection-body" id="reflectionText">Tap below to generate a thoughtful reflection across your entries.</div>
+          <button class="primary-btn" id="btnGenerateReflection">Generate Life Reflection</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- FLOATING PILL NAVIGATION -->
+  <div class="bottom-nav-wrap">
+    <nav class="bottom-nav">
+      <button class="nav-item active" data-tab="journal" onclick="switchTab('journal')">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        <span class="nav-label">Journal</span>
+      </button>
+
+      <button class="nav-item" data-tab="calendar" onclick="switchTab('calendar')">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <span class="nav-label">Calendar</span>
+      </button>
+
+      <button class="mic-fab" id="btnOpenRecord" aria-label="Record Entry">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+      </button>
+
+      <button class="nav-item" data-tab="chat" onclick="switchTab('chat')">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+        <span class="nav-label">Chat</span>
+      </button>
+
+      <button class="nav-item" data-tab="insights" onclick="switchTab('insights')">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="4" y="10" width="3" height="10" rx="1"/><rect x="10.5" y="6" width="3" height="14" rx="1"/><rect x="17" y="12" width="3" height="8" rx="1"/></svg>
+        <span class="nav-label">Insights</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- FULLSCREEN RECORDING MODAL -->
+  <div class="modal-overlay" id="recordModal">
+    <div>
+      <button class="icon-circle-btn" id="btnCloseRecord" aria-label="Close">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <div class="record-center" id="recordCenter">
+      <h2 class="record-heading" id="recordHeading">Take a quiet<br>moment.</h2>
+      <p class="record-prompt" id="recordPrompt">Who did you speak to, and what stayed with you?</p>
+      <button class="tap-another" id="btnNextPrompt">Tap for another</button>
+
+      <div id="voiceCaptureBlock" style="display:flex; flex-direction:column; align-items:center; width:100%;">
+        <div class="dial-container" id="dialContainer">
+          <svg class="dial-ring-text" viewBox="0 0 220 220">
+            <defs>
+              <path id="circlePath" d="M 110, 110 m -82, 0 a 82,82 0 1,1 164,0 a 82,82 0 1,1 -164,0" />
+            </defs>
+            <text fill="currentColor" font-size="10.5" font-weight="600" letter-spacing="4.2">
+              <textPath href="#circlePath" startOffset="0%">TAKE A MOMENT  •  TAP TO RECORD  •</textPath>
+            </text>
+          </svg>
+          <div class="pulse-circle"></div>
+          <div class="pulse-circle p2"></div>
+          <div class="pulse-circle p3"></div>
+          <button class="record-core-btn" id="btnRecordToggle" aria-label="Toggle Recording"></button>
+        </div>
+
+        <div class="live-transcript-box" id="liveTranscriptBox"></div>
+        <button class="primary-btn" id="btnSaveVoice" style="display:none; max-width:260px;">Finish &amp; Format Entry</button>
+      </div>
+
+      <div class="manual-write-area" id="manualWriteArea">
+        <textarea class="manual-textarea" id="manualTextarea" placeholder="Write freely... keep your ums, pauses, and raw thoughts intact."></textarea>
+        <button class="primary-btn" id="btnSaveManual">Save &amp; Format Entry</button>
+      </div>
+    </div>
+
+    <button class="write-instead-btn" id="btnWriteInstead">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+      <span id="writeInsteadLabel">Write instead</span>
+    </button>
+  </div>
+
+  <!-- ENTRY DETAIL SHEET -->
+  <div class="sheet-overlay" id="detailSheet">
+    <div class="sheet-card">
+      <div class="sheet-header">
+        <span class="mood-pill" id="detailMood">Mood 8/10</span>
+        <div style="display:flex; gap:8px;">
+          <button class="icon-circle-btn" id="btnDeleteEntry" aria-label="Delete" style="color:var(--danger);">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          </button>
+          <button class="icon-circle-btn" onclick="closeSheet('detailSheet')" aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+      </div>
+      <div id="detailDate" style="font-size:12.5px; color:var(--text-muted); margin-bottom:6px;"></div>
+      <h2 id="detailTitle" style="font-size:24px; margin-bottom:14px; line-height:1.2;"></h2>
+      <p id="detailBody" style="font-size:15.5px; line-height:1.7; white-space:pre-line; margin-bottom:16px;"></p>
+      <div id="detailTags" class="entry-tags" style="margin-bottom:16px;"></div>
+      <details style="font-size:13px; color:var(--text-muted); background:var(--surface-alt); padding:12px 14px; border-radius:14px;">
+        <summary style="cursor:pointer; font-weight:600;">View unedited transcript</summary>
+        <p id="detailRaw" style="margin-top:8px; line-height:1.5; white-space:pre-line;"></p>
+      </details>
+    </div>
+  </div>
+
+  <!-- SETTINGS SHEET -->
+  <div class="sheet-overlay" id="settingsSheet">
+    <div class="sheet-card">
+      <div class="sheet-header">
+        <h2 style="font-size:22px;">Settings</h2>
+        <button class="icon-circle-btn" onclick="closeSheet('settingsSheet')" aria-label="Close">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+
+      <div class="toggle-row">
+        <div>
+          <div style="font-weight:600; font-size:14.5px;">Dark Theme</div>
+          <div style="font-size:12.5px; color:var(--text-muted);">Warm obsidian night mode</div>
+        </div>
+        <input type="checkbox" id="darkModeToggle" style="width:20px; height:20px; accent-color:var(--accent);" />
+      </div>
+
+      <div class="field-group">
+        <label class="field-label" for="apiKeyInput">Gemini API Key (gemini-2.5-flash)</label>
+        <input type="password" class="text-input" id="apiKeyInput" placeholder="AIzaSy..." />
+        <div style="font-size:11.5px; color:var(--text-muted); margin-top:6px;">
+          Stored locally in your browser. Keeps all filler words ("um", "you know") intact while adding natural punctuation &amp; titles.
+        </div>
+      </div>
+
+      <button class="primary-btn" id="btnSaveSettings" style="margin-bottom:16px;">Save Settings</button>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+        <button class="secondary-btn" id="btnExportBackup">Export JSON</button>
+        <button class="secondary-btn" id="btnImportTrigger">Import JSON</button>
+        <input type="file" id="importFileInput" accept=".json" style="display:none;" />
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Register Service Worker
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+      });
+    }
+
+    const STORAGE_KEYS = {
+      ENTRIES: 'vj_entries_v1',
+      SETTINGS: 'vj_settings_v1',
+      REFLECTION: 'vj_reflection_v1',
+      CHAT: 'vj_chat_v1'
+    };
+
+    const PROMPTS = [
+      "Who did you speak to, and what stayed with you?",
+      "What felt heavy today, and what felt unexpectedly light?",
+      "If you could replay one small moment from today, which one?",
+      "What are you avoiding right now, honestly?",
+      "What gave you energy today, even for five minutes?"
+    ];
+
+    let entries = JSON.parse(localStorage.getItem(STORAGE_KEYS.ENTRIES) || '[]');
+    let settings = JSON.parse(localStorage.getItem(STORAGE_KEYS.SETTINGS) || '{"theme":"light","apiKey":""}');
+    let savedReflection = JSON.parse(localStorage.getItem(STORAGE_KEYS.REFLECTION) || 'null');
+    let chatHistory = JSON.parse(localStorage.getItem(STORAGE_KEYS.CHAT) || '[]');
+
+    let promptIndex = 0;
+    let isRecording = false;
+    let isManualMode = false;
+    let recognition = null;
+    let finalTranscript = '';
+    let activeDetailId = null;
+
+    let calDate = new Date();
+    let selectedDateStr = toDateKey(new Date());
+
+    function toDateKey(d) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2400);
+    }
+
+    // Theme Setup
+    function applyTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      document.getElementById('darkModeToggle').checked = theme === 'dark';
+      document.getElementById('themeColorMeta').setAttribute('content', theme === 'dark' ? '#141311' : '#F6F3EC');
+    }
+    applyTheme(settings.theme || 'light');
+
+    // Navigation
+    function switchTab(tab) {
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+      document.getElementById(`view-${tab}`).classList.add('active');
+      document.querySelectorAll('.nav-item').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tab);
+      });
+      if (tab === 'calendar') renderCalendar();
+      if (tab === 'insights') renderInsights();
+      if (tab === 'chat') renderChat();
+    }
+
+    // Render Journal Feed
+    function renderJournal(filter = '') {
+      const list = document.getElementById('journalList');
+      const empty = document.getElementById('journalEmpty');
+      const q = filter.trim().toLowerCase();
+
+      const filtered = entries.filter(e =>
+        !q ||
+        e.title.toLowerCase().includes(q) ||
+        e.formatted.toLowerCase().includes(q) ||
+        (e.tags || []).some(t => t.toLowerCase().includes(q))
+      );
+
+      if (entries.length === 0) {
+        empty.style.display = 'flex';
+        list.innerHTML = '';
+        return;
+      }
+
+      empty.style.display = 'none';
+      list.innerHTML = filtered.map(entry => {
+        const d = new Date(entry.createdAt);
+        const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+        const tagsHtml = (entry.tags || []).map(t => `<span class="tag-chip">${escapeHtml(t)}</span>`).join('');
+        return `
+          <article class="entry-card" onclick="openEntryDetail('${entry.id}')">
+            <div class="entry-meta">
+              <span>${dateStr}</span>
+              <span class="mood-pill">${escapeHtml(entry.moodLabel || 'Reflective')} • ${entry.moodScore || 7}/10</span>
+            </div>
+            <h3 class="entry-title">${escapeHtml(entry.title)}</h3>
+            <p class="entry-excerpt">${escapeHtml(entry.formatted)}</p>
+            ${tagsHtml ? `<div class="entry-tags">${tagsHtml}</div>` : ''}
+          </article>
+        `;
+      }).join('');
+    }
+
+    function escapeHtml(str) {
+      return String(str || '').replace(/[&<>"']/g, m => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[m]));
+    }
+
+    // Search Toggle
+    document.getElementById('btnToggleSearch').onclick = () => {
+      const wrap = document.getElementById('searchWrap');
+      wrap.classList.toggle('open');
+      if (wrap.classList.contains('open')) {
+        document.getElementById('searchInput').focus();
+      } else {
+        document.getElementById('searchInput').value = '';
+        renderJournal();
+      }
+    };
+    document.getElementById('searchInput').oninput = (e) => renderJournal(e.target.value);
+
+    // Speech Recognition Setup
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    function initRecognition() {
+      if (!SpeechRecognition) return null;
+      const rec = new SpeechRecognition();
+      rec.continuous = true;
+      rec.interimResults = true;
+      rec.lang = 'en-US';
+
+      rec.onresult = (event) => {
+        let interim = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const text = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += (finalTranscript ? ' ' : '') + text.trim();
+          } else {
+            interim += text;
+          }
+        }
+        const box = document.getElementById('liveTranscriptBox');
+        box.classList.add('visible');
+        box.textContent = (finalTranscript + ' ' + interim).trim();
+        box.scrollTop = box.scrollHeight;
+      };
+
+      rec.onerror = (e) => {
+        if (e.error === 'not-allowed') {
+          showToast('Mic blocked — check site permissions or use Write instead');
+          stopRecordingUI();
+        }
+      };
+
+      rec.onend = () => {
+        if (isRecording) {
+          try { rec.start(); } catch (_) {}
+        }
+      };
+
+      return rec;
+    }
+
+    function startRecordingUI() {
+      if (!SpeechRecognition) {
+        showToast('Speech API unavailable here — switching to Write mode');
+        toggleWriteMode(true);
+        return;
+      }
+      if (!recognition) recognition = initRecognition();
+      isRecording = true;
+      document.getElementById('dialContainer').classList.add('recording');
+      document.getElementById('recordHeading').innerHTML = 'Listening...';
+      document.getElementById('btnSaveVoice').style.display = 'none';
+      try { recognition.start(); } catch (_) {}
+    }
+
+    function stopRecordingUI() {
+      isRecording = false;
+      document.getElementById('dialContainer').classList.remove('recording');
+      document.getElementById('recordHeading').innerHTML = 'Take a quiet<br>moment.';
+      if (recognition) {
+        try { recognition.stop(); } catch (_) {}
+      }
+      if (finalTranscript.trim().length > 0) {
+        document.getElementById('btnSaveVoice').style.display = 'block';
+      }
+    }
+
+    document.getElementById('btnOpenRecord').onclick = () => {
+      finalTranscript = '';
+      document.getElementById('liveTranscriptBox').textContent = '';
+      document.getElementById('liveTranscriptBox').classList.remove('visible');
+      document.getElementById('btnSaveVoice').style.display = 'none';
+      document.getElementById('manualTextarea').value = '';
+      toggleWriteMode(false);
+      document.getElementById('recordModal').classList.add('open');
+    };
+
+    document.getElementById('btnCloseRecord').onclick = () => {
+      stopRecordingUI();
+      document.getElementById('recordModal').classList.remove('open');
+    };
+
+    document.getElementById('btnNextPrompt').onclick = () => {
+      promptIndex = (promptIndex + 1) % PROMPTS.length;
+      document.getElementById('recordPrompt').textContent = PROMPTS[promptIndex];
+    };
+
+    document.getElementById('btnRecordToggle').onclick = () => {
+      if (isRecording) stopRecordingUI();
+      else startRecordingUI();
+    };
+
+    function toggleWriteMode(forceManual) {
+      isManualMode = typeof forceManual === 'boolean' ? forceManual : !isManualMode;
+      if (isManualMode && isRecording) stopRecordingUI();
+      document.getElementById('voiceCaptureBlock').style.display = isManualMode ? 'none' : 'flex';
+      document.getElementById('manualWriteArea').classList.toggle('open', isManualMode);
+      document.getElementById('writeInsteadLabel').textContent = isManualMode ? 'Speak instead' : 'Write instead';
+    }
+
+    document.getElementById('btnWriteInstead').onclick = () => toggleWriteMode();
+
+    // Gemini Formatting (Strictly preserving filler words: um, uh, you know, like)
+    async function processEntryWithAI(rawText) {
+      const apiKey = (settings.apiKey || '').trim();
+      if (!apiKey) {
+        return localHumanFormat(rawText);
+      }
+
+      const systemInstruction = `You format personal voice journal transcripts.
+CRITICAL RULE: Keep ALL natural human filler words, hesitations, and speech patterns verbatim ("um", "uh", "you know", "like", "I mean", false starts). Do NOT sanitize, delete, or rewrite casual phrasing into formal language.
+ONLY add punctuation (periods, commas, ellipses "...", em-dashes "—") and paragraph breaks so it reads naturally on screen.
+Return valid JSON matching the schema.`;
+
+      const payload = {
+        contents: [{ parts: [{ text: `Transcript:
+${rawText}` }] }],
+        systemInstruction: { parts: [{ text: systemInstruction }] },
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: "OBJECT",
+            properties: {
+              title: { type: "STRING", description: "3 to 5 word evocative title" },
+              formatted: { type: "STRING", description: "Punctuated transcript with all filler words preserved verbatim" },
+              moodScore: { type: "INTEGER", description: "1 to 10 emotional score" },
+              moodLabel: { type: "STRING", description: "Single word mood like Grounded, Tired, Hopeful, Anxious, Energized" },
+              tags: { type: "ARRAY", items: { type: "STRING" }, description: "2 to 3 short context tags" }
+            },
+            required: ["title", "formatted", "moodScore", "moodLabel", "tags"]
+          }
+        }
+      };
+
+      try {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error('API error');
+        const data = await res.json();
+        const jsonText = data.candidates[0].content.parts[0].text;
+        return JSON.parse(jsonText);
+      } catch (err) {
+        showToast('Used offline formatter (check API key in Settings)');
+        return localHumanFormat(rawText);
+      }
+    }
+
+    function localHumanFormat(raw) {
+      const cleaned = raw.trim().replace(/\s+/g, ' ');
+      const capitalized = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+      const punctuated = /[.!?]$/.test(capitalized) ? capitalized : capitalized + '.';
+      const words = punctuated.split(' ');
+      const titleWords = words.filter(w => !['um', 'uh', 'like', 'so', 'and', 'the', 'i', 'a'].includes(w.toLowerCase().replace(/[^a-z]/g, ''))).slice(0, 4);
+      const title = titleWords.length ? titleWords.join(' ').replace(/[^a-zA-Z0-9 ]/g, '') : 'Quiet Reflection';
+      return {
+        title: title.charAt(0).toUpperCase() + title.slice(1),
+        formatted: punctuated,
+        moodScore: 7,
+        moodLabel: 'Reflective',
+        tags: ['Daily Note']
+      };
+    }
+
+    async function handleSaveEntry(rawText) {
+      const text = rawText.trim();
+      if (!text) return;
+
+      const btn = isManualMode ? document.getElementById('btnSaveManual') : document.getElementById('btnSaveVoice');
+      const prevLabel = btn.textContent;
+      btn.textContent = 'Formatting...';
+      btn.disabled = true;
+
+      const result = await processEntryWithAI(text);
+      const now = new Date();
+      const newEntry = {
+        id: String(Date.now()),
+        createdAt: now.toISOString(),
+        dateKey: toDateKey(now),
+        raw: text,
+        title: result.title || 'Untitled Moment',
+        formatted: result.formatted || text,
+        moodScore: result.moodScore || 7,
+        moodLabel: result.moodLabel || 'Reflective',
+        tags: result.tags || []
+      };
+
+      entries.unshift(newEntry);
+      localStorage.setItem(STORAGE_KEYS.ENTRIES, JSON.stringify(entries));
+
+      btn.textContent = prevLabel;
+      btn.disabled = false;
+      document.getElementById('recordModal').classList.remove('open');
+      renderJournal();
+      showToast('Entry saved');
+    }
+
+    document.getElementById('btnSaveVoice').onclick = () => handleSaveEntry(finalTranscript);
+    document.getElementById('btnSaveManual').onclick = () => handleSaveEntry(document.getElementById('manualTextarea').value);
+
+    // Entry Detail Sheet
+    function openEntryDetail(id) {
+      const entry = entries.find(e => e.id === id);
+      if (!entry) return;
+      activeDetailId = id;
+      const d = new Date(entry.createdAt);
+      document.getElementById('detailDate').textContent = d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+      document.getElementById('detailMood').textContent = `${entry.moodLabel} • ${entry.moodScore}/10`;
+      document.getElementById('detailTitle').textContent = entry.title;
+      document.getElementById('detailBody').textContent = entry.formatted;
+      document.getElementById('detailRaw').textContent = entry.raw;
+      document.getElementById('detailTags').innerHTML = (entry.tags || []).map(t => `<span class="tag-chip">${escapeHtml(t)}</span>`).join('');
+      document.getElementById('detailSheet').classList.add('open');
+    }
+
+    document.getElementById('btnDeleteEntry').onclick = () => {
+      if (!activeDetailId) return;
+      entries = entries.filter(e => e.id !== activeDetailId);
+      localStorage.setItem(STORAGE_KEYS.ENTRIES, JSON.stringify(entries));
+      closeSheet('detailSheet');
+      renderJournal();
+      renderCalendar();
+      showToast('Entry deleted');
+    };
+
+    function closeSheet(id) {
+      document.getElementById(id).classList.remove('open');
+    }
+
+    // Calendar Logic
+    function computeStreaks() {
+      const uniqueDays = [...new Set(entries.map(e => e.dateKey))].sort().reverse();
+      document.getElementById('statDays').textContent = uniqueDays.length;
+
+      let streak = 0;
+      let cursor = new Date();
+      let todayKey = toDateKey(cursor);
+      cursor.setDate(cursor.getDate() - 1);
+      let yesterdayKey = toDateKey(cursor);
+
+      let checkDate = uniqueDays.includes(todayKey) ? new Date() : (uniqueDays.includes(yesterdayKey) ? cursor : null);
+      if (checkDate) {
+        while (uniqueDays.includes(toDateKey(checkDate))) {
+          streak++;
+          checkDate.setDate(checkDate.getDate() - 1);
+        }
+      }
+      document.getElementById('statStreak').textContent = streak;
+    }
+
+    function renderCalendar() {
+      computeStreaks();
+      const year = calDate.getFullYear();
+      const month = calDate.getMonth();
+      document.getElementById('calMonthLabel').textContent = calDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+      const firstDay = new Date(year, month, 1).getDay();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const entryDates = new Set(entries.map(e => e.dateKey));
+
+      const grid = document.getElementById('calDaysGrid');
+      let html = '';
+      for (let i = 0; i < firstDay; i++) html += '<div></div>';
+
+      for (let d = 1; d <= daysInMonth; d++) {
+        const key = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const isSelected = key === selectedDateStr;
+        const hasEntry = entryDates.has(key);
+        html += `<div class="cal-day ${isSelected ? 'selected' : ''} ${hasEntry ? 'has-entry' : ''}" onclick="selectCalDay('${key}')">${d}</div>`;
+      }
+      grid.innerHTML = html;
+      renderSelectedDayEntries();
+    }
+
+    function selectCalDay(key) {
+      selectedDateStr = key;
+      renderCalendar();
+    }
+
+    function renderSelectedDayEntries() {
+      const todayKey = toDateKey(new Date());
+      const titleEl = document.getElementById('selectedDayTitle');
+      if (selectedDateStr === todayKey) {
+        titleEl.textContent = 'Today';
+      } else {
+        const [y, m, d] = selectedDateStr.split('-').map(Number);
+        titleEl.textContent = new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+      }
+
+      const dayEntries = entries.filter(e => e.dateKey === selectedDateStr);
+      const box = document.getElementById('selectedDayEntries');
+      if (dayEntries.length === 0) {
+        box.innerHTML = `<p style="color:var(--text-muted); font-size:14.5px;">Nothing recorded on this day.</p>`;
+        return;
+      }
+      box.innerHTML = dayEntries.map(entry => `
+        <article class="entry-card" onclick="openEntryDetail('${entry.id}')">
+          <div class="entry-meta">
+            <span>${new Date(entry.createdAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</span>
+            <span class="mood-pill">${escapeHtml(entry.moodLabel)} • ${entry.moodScore}/10</span>
+          </div>
+          <h3 class="entry-title">${escapeHtml(entry.title)}</h3>
+          <p class="entry-excerpt">${escapeHtml(entry.formatted)}</p>
+        </article>
+      `).join('');
+    }
+
+    document.getElementById('calPrev').onclick = () => { calDate.setMonth(calDate.getMonth() - 1); renderCalendar(); };
+    document.getElementById('calNext').onclick = () => { calDate.setMonth(calDate.getMonth() + 1); renderCalendar(); };
+
+    // Chat With Past Self
+    function renderChat() {
+      const hero = document.getElementById('chatEmptyHero');
+      const list = document.getElementById('chatMessages');
+      if (chatHistory.length === 0) {
+        hero.style.display = 'block';
+        list.innerHTML = '';
+        return;
+      }
+      hero.style.display = 'none';
+      list.innerHTML = chatHistory.map(m => `<div class="chat-bubble ${m.role}">${escapeHtml(m.text)}</div>`).join('');
+    }
+
+    async function sendChatPrompt(text) {
+      const q = (text || document.getElementById('chatInput').value).trim();
+      if (!q) return;
+      document.getElementById('chatInput').value = '';
+
+      chatHistory.push({ role: 'user', text: q });
+      renderChat();
+
+      const apiKey = (settings.apiKey || '').trim();
+      if (!apiKey || entries.length === 0) {
+        const reply = entries.length === 0
+          ? "You haven't recorded any journal entries yet. Tap the microphone below to capture your first reflection, and we can talk through it anytime."
+          : "Add your Gemini API key in Settings to unlock AI conversations across your journal entries. For now, you can browse and search all your reflections in the Journal tab.";
+        chatHistory.push({ role: 'ai', text: reply });
+        localStorage.setItem(STORAGE_KEYS.CHAT, JSON.stringify(chatHistory));
+        renderChat();
+        return;
+      }
+
+      chatHistory.push({ role: 'ai', text: 'Reflecting on your entries...' });
+      renderChat();
+
+      const context = entries.slice(0, 25).map(e => `[${e.dateKey}] (${e.moodLabel} ${e.moodScore}/10) ${e.title}: ${e.formatted}`).join('
+
+');
+      const prompt = `You are a thoughtful, grounded reflection companion helping the user explore their own voice journal entries. Answer warmly and concisely based ONLY on these entries:
+
+${context}
+
+User question: ${q}`;
+
+      try {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+        });
+        const data = await res.json();
+        const answer = data.candidates?.[0]?.content?.parts?.[0]?.text || "I couldn't read a response right now.";
+        chatHistory[chatHistory.length - 1] = { role: 'ai', text: answer };
+      } catch (_) {
+        chatHistory[chatHistory.length - 1] = { role: 'ai', text: 'Network or API key error while reading your entries.' };
+      }
+      localStorage.setItem(STORAGE_KEYS.CHAT, JSON.stringify(chatHistory));
+      renderChat();
+    }
+
+    document.getElementById('btnSendChat').onclick = () => sendChatPrompt();
+    document.getElementById('chatInput').onkeydown = (e) => { if (e.key === 'Enter') sendChatPrompt(); };
+    document.getElementById('btnClearChat').onclick = () => {
+      chatHistory = [];
+      localStorage.removeItem(STORAGE_KEYS.CHAT);
+      renderChat();
+    };
+
+    // Insights & Life Reflection
+    function renderInsights() {
+      const empty = document.getElementById('insightsEmpty');
+      const content = document.getElementById('insightsContent');
+      if (entries.length === 0) {
+        empty.style.display = 'flex';
+        content.style.display = 'none';
+        return;
+      }
+      empty.style.display = 'none';
+      content.style.display = 'block';
+
+      const recent = entries.slice(0, 7).reverse();
+      document.getElementById('moodBars').innerHTML = recent.map(e => {
+        const pct = Math.max(12, Math.min(100, (e.moodScore || 7) * 10));
+        const label = new Date(e.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        return `
+          <div class="mood-bar-col">
+            <div class="mood-bar-fill" style="height:${pct}%" title="${e.moodLabel} (${e.moodScore}/10)"></div>
+            <div class="mood-bar-label">${label}</div>
+          </div>
+        `;
+      }).join('');
+
+      if (savedReflection) {
+        document.getElementById('reflectionText').textContent = savedReflection.text;
+        document.getElementById('reflectionUpdatedAt').textContent = `Updated ${savedReflection.updatedAt}`;
+      }
+    }
+
+    document.getElementById('btnGenerateReflection').onclick = async () => {
+      const apiKey = (settings.apiKey || '').trim();
+      if (!apiKey) {
+        showToast('Add your Gemini API key in Settings first');
+        return;
+      }
+      const btn = document.getElementById('btnGenerateReflection');
+      btn.textContent = 'Synthesizing your chapter...';
+      btn.disabled = true;
+
+      const context = entries.slice(0, 20).map(e => `[${e.dateKey}] (${e.moodLabel}, ${e.moodScore}/10) ${e.title}: ${e.formatted}`).join('
+
+');
+      const prompt = `Read these recent voice journal entries and write a warm, insightful, grounded second-person ("You...") reflection on the user's current life chapter. Highlight recurring emotional patterns, quiet wins, and one gentle question to sit with. Keep it under 180 words.
+
+${context}`;
+
+      try {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+        });
+        const data = await res.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Unable to generate reflection right now.';
+        savedReflection = {
+          text,
+          updatedAt: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+        };
+        localStorage.setItem(STORAGE_KEYS.REFLECTION, JSON.stringify(savedReflection));
+        renderInsights();
+      } catch (_) {
+        showToast('Error generating reflection');
+      }
+      btn.textContent = 'Refresh Life Reflection';
+      btn.disabled = false;
+    };
+
+    // Settings & Backup
+    document.getElementById('btnOpenSettings').onclick = () => {
+      document.getElementById('apiKeyInput').value = settings.apiKey || '';
+      document.getElementById('darkModeToggle').checked = settings.theme === 'dark';
+      document.getElementById('settingsSheet').classList.add('open');
+    };
+
+    document.getElementById('darkModeToggle').onchange = (e) => {
+      settings.theme = e.target.checked ? 'dark' : 'light';
+      applyTheme(settings.theme);
+      localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
+    };
+
+    document.getElementById('btnSaveSettings').onclick = () => {
+      settings.apiKey = document.getElementById('apiKeyInput').value.trim();
+      settings.theme = document.getElementById('darkModeToggle').checked ? 'dark' : 'light';
+      localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
+      applyTheme(settings.theme);
+      closeSheet('settingsSheet');
+      showToast('Settings saved');
+    };
+
+    document.getElementById('btnExportBackup').onclick = () => {
+      const blob = new Blob([JSON.stringify({ entries, exportedAt: new Date().toISOString() }, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `voice-journal-backup-${toDateKey(new Date())}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    };
+
+    document.getElementById('btnImportTrigger').onclick = () => document.getElementById('importFileInput').click();
+    document.getElementById('importFileInput').onchange = (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        try {
+          const parsed = JSON.parse(ev.target.result);
+          if (Array.isArray(parsed.entries)) {
+            entries = parsed.entries;
+            localStorage.setItem(STORAGE_KEYS.ENTRIES, JSON.stringify(entries));
+            renderJournal();
+            showToast(`Imported ${entries.length} entries`);
+            closeSheet('settingsSheet');
+          }
+        } catch (_) {
+          showToast('Invalid JSON backup file');
+        }
+      };
+      reader.readAsText(file);
+    };
+
+    // Initial Render
+    renderJournal();
+  </script>
+</body>
+</html>
