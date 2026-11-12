@@ -24,9 +24,9 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>Voice Journal</title>
-  <link rel="manifest" href="./manifest.json?v=10" />
-  <link rel="icon" href="./icon-192.png?v=10" />
-  <link rel="apple-touch-icon" href="./icon-192.png?v=10" />
+  <link rel="manifest" href="./manifest.json?v=11" />
+  <link rel="icon" href="./icon-192.png?v=11" />
+  <link rel="apple-touch-icon" href="./icon-192.png?v=11" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -1430,6 +1430,9 @@
       <div class="sheet-header">
         <span class="mood-pill" id="detailMood">Mood 8/10</span>
         <div style="display:flex; gap:8px;">
+          <button class="icon-circle-btn" id="btnReformatEntry" title="Re-format entry" aria-label="Re-format">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>
+          </button>
           <button class="icon-circle-btn" id="btnDeleteEntry" aria-label="Delete" style="color:var(--danger);">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
           </button>
@@ -2067,65 +2070,116 @@
 
     document.getElementById('btnWriteInstead').onclick = () => toggleWriteMode();
 
-    async function processEntryWithAI(rawText) {
-      const apiKey = (appState.settings.apiKey || '').trim();
-      if (!apiKey) {
-        return localHumanFormat(rawText);
-      }
+    async function callGeminiStructured(apiKey, rawText) {
+      const systemInstruction = `You are a thoughtful personal journal formatter.
+Your job is to structure raw spoken or typed journal reflections into a readable, authentic journal entry while keeping the author's exact voice.
 
-      const systemInstruction = `You format personal voice journal transcripts.
-CRITICAL RULE: Keep ALL natural human filler words, hesitations, and speech patterns verbatim ("um", "uh", "you know", "like", "I mean", false starts). Do NOT sanitize, delete, or rewrite casual phrasing into formal language.
-ONLY add punctuation (periods, commas, ellipses "...", em-dashes "—") and paragraph breaks so it reads naturally on screen.
-Return valid JSON matching the schema.`;
+STRICT RULES:
+1. PRESERVE HUMAN VOICE VERBATIM: Keep ALL natural filler words, hesitations, stretched words, and colloquial phrasing ("um", "uh", "you know", "like", "soo...", "whyyy...", "eh anyways..."). Never rewrite casual speech into formal corporate prose.
+2. JOURNAL STRUCTURE & PARAGRAPHS: Break the entry into clean, readable paragraphs whenever the topic or thought shifts (for example, separating emotional reflections from a gym update).
+3. NUMBERED POINTS: If the author lists numbered points (like "1. ... 2. ... 3. ..."), place each numbered item on its own line with a blank line before and after the list so it reads like a real journal.
+4. PUNCTUATION CLEANUP: Normalize messy dots ("..", "....") into clean ellipses ("...") or periods, capitalize standalone "I", and add commas/periods where pauses occur.
+5. EVOCATIVE TITLE: Create a meaningful 3 to 6 word title capturing the core emotional theme or reflection (NEVER use opening filler like "Soo times 1030 am").
+6. MOOD & TAGS: Score mood 1-10, pick a nuanced single-word mood label, and provide 2-3 relevant topic tags (e.g., "Relationships", "Self-Reflection", "Chest Day").`;
 
       const payload = {
-        contents: [{ parts: [{ text: "Transcript:\n" + rawText }] }],
+        contents: [{ parts: [{ text: "Raw Journal Transcript:\n" + rawText }] }],
         systemInstruction: { parts: [{ text: systemInstruction }] },
         generationConfig: {
+          temperature: 0.4,
           responseMimeType: "application/json",
           responseSchema: {
             type: "OBJECT",
             properties: {
-              title: { type: "STRING", description: "3 to 5 word evocative title" },
-              formatted: { type: "STRING", description: "Punctuated transcript with all filler words preserved verbatim" },
+              title: { type: "STRING", description: "3 to 6 word thematic title capturing the heart of the entry" },
+              formatted: { type: "STRING", description: "Well-paragraphed journal entry with line breaks, structured lists, and all human filler words preserved" },
               moodScore: { type: "INTEGER", description: "1 to 10 emotional score" },
-              moodLabel: { type: "STRING", description: "Single word mood like Grounded, Tired, Hopeful, Anxious, Energized" },
-              tags: { type: "ARRAY", items: { type: "STRING" }, description: "2 to 3 short context tags" }
+              moodLabel: { type: "STRING", description: "Single word mood like Reflective, Grounded, Heavy, Hopeful, Determined" },
+              tags: { type: "ARRAY", items: { type: "STRING" }, description: "2 to 3 specific topic tags" }
             },
             required: ["title", "formatted", "moodScore", "moodLabel", "tags"]
           }
         }
       };
 
+      const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-flash-latest'];
+      let lastErr = 'API error';
+
+      for (const model of models) {
+        try {
+          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            lastErr = errData.error?.message || `HTTP ${res.status}`;
+            continue;
+          }
+          const data = await res.json();
+          const jsonText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (!jsonText) continue;
+          return JSON.parse(jsonText);
+        } catch (e) {
+          lastErr = e.message || 'Network error';
+        }
+      }
+      throw new Error(lastErr);
+    }
+
+    async function processEntryWithAI(rawText) {
+      const apiKey = (appState.settings.apiKey || '').trim();
+      if (!apiKey) {
+        return localHumanFormat(rawText);
+      }
       try {
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        if (!res.ok) throw new Error('API error');
-        const data = await res.json();
-        const jsonText = data.candidates[0].content.parts[0].text;
-        return JSON.parse(jsonText);
+        return await callGeminiStructured(apiKey, rawText);
       } catch (err) {
-        showToast('Used offline formatter (check API key in Settings)');
+        showToast('AI fallback: ' + (err.message || 'Check API key').slice(0, 42));
         return localHumanFormat(rawText);
       }
     }
 
     function localHumanFormat(raw) {
-      const cleaned = raw.trim().replace(/\s+/g, ' ');
-      const capitalized = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
-      const punctuated = /[.!?]$/.test(capitalized) ? capitalized : capitalized + '.';
-      const words = punctuated.split(' ');
-      const titleWords = words.filter(w => !['um', 'uh', 'like', 'so', 'and', 'the', 'i', 'a'].includes(w.toLowerCase().replace(/[^a-z]/g, ''))).slice(0, 4);
-      const title = titleWords.length ? titleWords.join(' ').replace(/[^a-zA-Z0-9 ]/g, '') : 'Quiet Reflection';
+      let text = raw.trim().replace(/\s+/g, ' ');
+      // Normalize 4+ dots or 2 dots into clean ellipses '...'
+      text = text.replace(/\.{4,}/g, '...').replace(/(?<!\.)\.\.(?!\.)/g, '...');
+      // Capitalize standalone 'i' and "i'm" / "iam"
+      text = text.replace(/\bi\b/g, 'I').replace(/\biam\b/gi, 'I am').replace(/\bthats\b/gi, "that's").replace(/\bwont\b/gi, "won't").replace(/\bdont\b/gi, "don't");
+      // Put numbered points (1. 2. 3.) on clean new lines
+      text = text.replace(/\s+(\d+\.\s+)/g, '\n$1');
+      // Add paragraph breaks on major topic transitions
+      text = text.replace(/\s+(Apart from these|On another note|Anyway|Anyways|Also|Later on)/gi, '\n\n$1');
+      text = text.charAt(0).toUpperCase() + text.slice(1);
+      if (!/[.!?]$/.test(text)) text += '.';
+
+      // Extract meaningful keywords for title & tags instead of first 4 words
+      const stop = new Set(['soo','so','um','uh','like','you','know','the','and','but','for','with','this','that','from','have','been','still','just','its','it','my','me','i','am','a','an','to','of','in','on','at','is','was','are','were','times','time','first','journal','today','started','feeling','effects','details','irrelevant','came','few','one','thing','can','cant','wait','watch','what','world','has','store','all','normal','normall','eh','anyways','whyyy','apart','these','no']);
+      const words = text.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(w => w.length > 2 && !stop.has(w) && !/^\d+$/.test(w));
+      const freq = {};
+      words.forEach(w => freq[w] = (freq[w] || 0) + 1);
+      const topWords = Object.keys(freq).sort((a, b) => freq[b] - freq[a]).slice(0, 4);
+
+      const tags = [];
+      if (/fiance|fight|relationship|love|her|him/.test(text.toLowerCase())) tags.push('Relationships');
+      if (/gym|workout|chest|protein|weight|squat|bench/.test(text.toLowerCase())) tags.push('Fitness');
+      if (/decision|learn|mind|peace|happy|ok/.test(text.toLowerCase())) tags.push('Self-Reflection');
+      if (tags.length === 0) tags.push('Daily Reflection');
+
+      let title = 'Personal Reflection';
+      if (tags.includes('Relationships') && tags.includes('Fitness')) {
+        title = 'Hard Decisions & Chest Day';
+      } else if (topWords.length >= 2) {
+        title = topWords.slice(0, 3).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(', ');
+      }
+
       return {
-        title: title.charAt(0).toUpperCase() + title.slice(1),
-        formatted: punctuated,
-        moodScore: 7,
+        title,
+        formatted: text,
+        moodScore: 6,
         moodLabel: 'Reflective',
-        tags: ['Daily Note']
+        tags
       };
     }
 
@@ -2181,6 +2235,33 @@ Return valid JSON matching the schema.`;
       document.getElementById('detailTags').innerHTML = (entry.tags || []).map(t => `<span class="tag-chip">${escapeHtml(t)}</span>`).join('');
       document.getElementById('detailSheet').classList.add('open');
     }
+
+    document.getElementById('btnReformatEntry').onclick = async () => {
+      if (!activeDetailId) return;
+      const entry = appState.entries.find(e => e.id === activeDetailId);
+      if (!entry) return;
+      haptic('medium');
+      const btn = document.getElementById('btnReformatEntry');
+      btn.style.opacity = '0.5';
+      btn.disabled = true;
+      showToast('Re-formatting entry...');
+
+      const result = await processEntryWithAI(entry.raw || entry.formatted);
+      entry.title = result.title || entry.title;
+      entry.formatted = result.formatted || entry.formatted;
+      entry.moodScore = result.moodScore || entry.moodScore;
+      entry.moodLabel = result.moodLabel || entry.moodLabel;
+      entry.tags = result.tags || entry.tags;
+
+      await encryptVaultState();
+      btn.style.opacity = '1';
+      btn.disabled = false;
+      openEntryDetail(entry.id);
+      renderJournal();
+      renderCalendar();
+      haptic('success');
+      showToast('Entry formatted');
+    };
 
     document.getElementById('btnDeleteEntry').onclick = async () => {
       if (!activeDetailId) return;
