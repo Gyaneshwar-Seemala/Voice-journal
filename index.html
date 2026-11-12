@@ -24,9 +24,9 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>Voice Journal</title>
-  <link rel="manifest" href="./manifest.json?v=13" />
-  <link rel="icon" href="./icon-192.png?v=13" />
-  <link rel="apple-touch-icon" href="./icon-192.png?v=13" />
+  <link rel="manifest" href="./manifest.json?v=14" />
+  <link rel="icon" href="./icon-192.png?v=14" />
+  <link rel="apple-touch-icon" href="./icon-192.png?v=14" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -2050,6 +2050,46 @@
     document.getElementById('searchInput').oninput = (e) => renderJournal(e.target.value);
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let committedSessionsTranscript = '';
+    let currentSessionTranscript = '';
+
+    // Collapses Android Chrome's progressive speech-recognition prefix expansion
+    // e.g. "after after my after my morning after my morning journal" -> "after my morning journal"
+    function cleanAndroidSpeechStutter(raw) {
+      if (!raw) return '';
+      const tokens = raw.trim().split(/\s+/);
+      if (tokens.length < 4) return raw.trim();
+
+      const norm = (w) => w.toLowerCase().replace(/^[^a-z0-9']+|[^a-z0-9']+$/g, '');
+      const result = [];
+      let i = 0;
+
+      while (i < tokens.length) {
+        let collapsed = false;
+        // Look ahead for progressive prefix chains: [A] [A B] [A B C] ...
+        const maxWin = Math.min(28, Math.floor((tokens.length - i) / 2));
+        for (let len = maxWin; len >= 1; len--) {
+          let match = true;
+          for (let k = 0; k < len; k++) {
+            if (norm(tokens[i + k]) !== norm(tokens[i + len + k])) {
+              match = false;
+              break;
+            }
+          }
+          if (match) {
+            // Skip the shorter duplicate prefix and keep the longer continuation
+            i += len;
+            collapsed = true;
+            break;
+          }
+        }
+        if (!collapsed) {
+          result.push(tokens[i]);
+          i++;
+        }
+      }
+      return result.join(' ');
+    }
 
     function initRecognition() {
       if (!SpeechRecognition) return null;
@@ -2059,18 +2099,31 @@
       rec.lang = 'en-US';
 
       rec.onresult = (event) => {
-        let interim = '';
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const text = event.results[i][0].transcript;
-          if (event.results[i].isFinal) {
-            finalTranscript += (finalTranscript ? ' ' : '') + text.trim();
-          } else {
-            interim += text;
-          }
+        // Android Chrome often marks every progressive partial update as isFinal=true
+        // with cumulative text across event.results[0..n]. Build clean segments by skipping
+        // any result whose normalized text is a prefix of the next result.
+        const rawSegments = [];
+        for (let i = 0; i < event.results.length; i++) {
+          const seg = (event.results[i][0].transcript || '').trim();
+          if (seg) rawSegments.push(seg);
         }
+
+        const dedupedSegments = [];
+        for (let i = 0; i < rawSegments.length; i++) {
+          const cur = rawSegments[i];
+          const next = rawSegments[i + 1];
+          if (next && next.toLowerCase().startsWith(cur.toLowerCase())) {
+            continue; // Skip Android cumulative prefix
+          }
+          dedupedSegments.push(cur);
+        }
+
+        currentSessionTranscript = cleanAndroidSpeechStutter(dedupedSegments.join(' '));
+        finalTranscript = [committedSessionsTranscript, currentSessionTranscript].filter(Boolean).join(' ').trim();
+
         const box = document.getElementById('liveTranscriptBox');
         box.classList.add('visible');
-        box.textContent = (finalTranscript + ' ' + interim).trim();
+        box.textContent = finalTranscript;
         box.scrollTop = box.scrollHeight;
       };
 
@@ -2083,6 +2136,11 @@
       };
 
       rec.onend = () => {
+        if (currentSessionTranscript) {
+          committedSessionsTranscript = [committedSessionsTranscript, currentSessionTranscript].filter(Boolean).join(' ').trim();
+          currentSessionTranscript = '';
+          finalTranscript = committedSessionsTranscript;
+        }
         if (isRecording) {
           try { rec.start(); } catch (_) {}
         }
@@ -2123,6 +2181,8 @@
     document.getElementById('btnOpenRecord').onclick = () => {
       haptic('medium');
       finalTranscript = '';
+      committedSessionsTranscript = '';
+      currentSessionTranscript = '';
       document.getElementById('liveTranscriptBox').textContent = '';
       document.getElementById('liveTranscriptBox').classList.remove('visible');
       document.getElementById('btnSaveVoice').style.display = 'none';
@@ -2297,18 +2357,19 @@ STRICT RULES:
     }
 
     async function processEntryWithAI(rawText, onStatus) {
+      const cleanedRaw = cleanAndroidSpeechStutter(rawText);
       const apiKey = (appState.settings.apiKey || '').trim();
       if (!apiKey) {
         if (onStatus) onStatus(55, 'Formatting locally (no API key set)...');
         await new Promise(r => setTimeout(r, 320));
-        return localHumanFormat(rawText);
+        return localHumanFormat(cleanedRaw);
       }
       try {
-        return await callGeminiStructured(apiKey, rawText, onStatus);
+        return await callGeminiStructured(apiKey, cleanedRaw, onStatus);
       } catch (err) {
         if (onStatus) onStatus(65, 'API unavailable — formatting locally...');
         showToast('AI fallback: ' + (err.message || 'Check API key').slice(0, 42));
-        return localHumanFormat(rawText);
+        return localHumanFormat(cleanedRaw);
       }
     }
 

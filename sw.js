@@ -1,10 +1,10 @@
-const CACHE_NAME = 'voice-journal-v13';
+const CACHE_NAME = 'voice-journal-v14';
 const ASSETS = [
   './',
   './index.html',
-  './manifest.json?v=13',
-  './icon-192.png?v=13',
-  './icon-512.png?v=13'
+  './manifest.json?v=14',
+  './icon-192.png?v=14',
+  './icon-512.png?v=14'
 ];
 
 self.addEventListener('install', (event) => {
