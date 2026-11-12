@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://generativelanguage.googleapis.com; img-src 'self' data: blob:; base-uri 'self'; form-action 'self';" />
+  <meta name="referrer" content="no-referrer" />
   <meta name="theme-color" content="#1C1A17" id="themeColorMeta" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -27,6 +29,7 @@
       --pill-bg: #FDFBF7;
       --shadow: 0 10px 30px rgba(28, 26, 23, 0.08);
       --danger: #C84B31;
+      --danger-bg: rgba(200, 75, 49, 0.1);
       --success: #3B7A57;
     }
 
@@ -43,6 +46,7 @@
       --pill-bg: #22201C;
       --shadow: 0 12px 34px rgba(0, 0, 0, 0.45);
       --danger: #E06D53;
+      --danger-bg: rgba(224, 109, 83, 0.14);
       --success: #5EA67D;
     }
 
@@ -65,6 +69,119 @@
     h1, h2, h3, .serif {
       font-family: 'Fraunces', Georgia, serif;
       letter-spacing: -0.02em;
+    }
+
+    /* VAULT LOCK SCREEN */
+    .vault-screen {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      z-index: 500;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 28px 24px;
+      text-align: center;
+    }
+
+    .vault-screen.open {
+      display: flex;
+    }
+
+    .vault-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 18px;
+    }
+
+    .vault-title {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .vault-sub {
+      font-size: 14px;
+      color: var(--text-muted);
+      max-width: 300px;
+      line-height: 1.5;
+      margin-bottom: 26px;
+    }
+
+    .pin-dots {
+      display: flex;
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+
+    .pin-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 1.5px solid var(--text);
+      background: transparent;
+      transition: background-color 0.15s ease, transform 0.15s ease;
+    }
+
+    .pin-dot.filled {
+      background: var(--accent);
+      transform: scale(1.12);
+    }
+
+    .pin-pad {
+      display: grid;
+      grid-template-columns: repeat(3, 72px);
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+
+    .pin-key {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-family: 'Fraunces', serif;
+      font-size: 24px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      user-select: none;
+      transition: transform 0.1s ease, background-color 0.15s ease;
+    }
+
+    .pin-key:active {
+      transform: scale(0.92);
+      background: var(--surface-alt);
+    }
+
+    .pin-key.ghost {
+      border-color: transparent;
+      background: transparent;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .vault-error {
+      color: var(--danger);
+      font-size: 13px;
+      font-weight: 600;
+      min-height: 20px;
+      margin-bottom: 8px;
     }
 
     .app-shell {
@@ -91,7 +208,7 @@
 
     .header-actions {
       display: flex;
-      gap: 10px;
+      gap: 8px;
     }
 
     .icon-circle-btn {
@@ -544,9 +661,28 @@
       background: var(--surface-alt);
       color: var(--text);
       font-family: inherit;
+      font-size: 13.5px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .danger-btn {
+      width: 100%;
+      padding: 13px 16px;
+      border-radius: 14px;
+      border: 1px solid var(--danger);
+      background: var(--danger-bg);
+      color: var(--danger);
+      font-family: inherit;
       font-size: 14px;
       font-weight: 600;
       cursor: pointer;
+      margin-top: 12px;
+      transition: opacity 0.2s ease, transform 0.15s ease;
+    }
+
+    .danger-btn:active {
+      transform: scale(0.98);
     }
 
     .bottom-nav-wrap {
@@ -800,7 +936,7 @@
     .sheet-overlay {
       position: fixed;
       inset: 0;
-      background: rgba(0, 0, 0, 0.45);
+      background: rgba(0, 0, 0, 0.52);
       z-index: 120;
       display: none;
       align-items: flex-end;
@@ -841,7 +977,7 @@
       margin-bottom: 6px;
     }
 
-    .text-input {
+    .text-input, .select-input {
       width: 100%;
       padding: 12px 14px;
       border-radius: 14px;
@@ -860,7 +996,122 @@
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 16px;
+      margin-bottom: 12px;
+    }
+
+    .security-card {
+      padding: 14px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      margin-bottom: 14px;
+    }
+
+    .security-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--success);
+      margin-bottom: 6px;
+    }
+
+    /* 3-Step Reset Confirmation Dialog */
+    .dialog-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.65);
+      backdrop-filter: blur(4px);
+      z-index: 160;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .dialog-overlay.open {
+      display: flex;
+    }
+
+    .dialog-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 26px;
+      padding: 24px 22px;
+      width: 100%;
+      max-width: 360px;
+      box-shadow: var(--shadow);
+      text-align: center;
+    }
+
+    .step-dots {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
       margin-bottom: 16px;
+    }
+
+    .step-dot {
+      width: 28px;
+      height: 5px;
+      border-radius: 999px;
+      background: var(--border);
+      transition: background-color 0.25s ease;
+    }
+
+    .step-dot.active {
+      background: var(--danger);
+    }
+
+    .dialog-title {
+      font-size: 21px;
+      font-weight: 700;
+      margin-bottom: 10px;
+      color: var(--text);
+    }
+
+    .dialog-desc {
+      font-size: 14px;
+      line-height: 1.55;
+      color: var(--text-muted);
+      margin-bottom: 22px;
+    }
+
+    .dialog-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .dialog-cancel-btn {
+      padding: 13px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--surface-alt);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .dialog-ok-btn {
+      padding: 13px 14px;
+      border-radius: 999px;
+      border: none;
+      background: var(--danger);
+      color: #FFFFFF;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s ease, transform 0.15s ease;
+    }
+
+    .dialog-ok-btn:disabled {
+      opacity: 0.42;
+      cursor: not-allowed;
     }
 
     .toast {
@@ -887,12 +1138,51 @@
 <body>
   <div class="toast" id="toast">Saved</div>
 
+  <!-- VAULT LOCK / SETUP SCREEN -->
+  <div class="vault-screen" id="vaultScreen">
+    <div class="vault-badge">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      <span>AES-256 Encrypted Local Vault</span>
+    </div>
+    <h2 class="vault-title serif" id="vaultTitle">Unlock Journal</h2>
+    <p class="vault-sub" id="vaultSub">Enter your 4-digit passcode to decrypt your entries and API key.</p>
+
+    <div class="pin-dots" id="pinDots">
+      <div class="pin-dot"></div>
+      <div class="pin-dot"></div>
+      <div class="pin-dot"></div>
+      <div class="pin-dot"></div>
+    </div>
+
+    <div class="vault-error" id="vaultError"></div>
+
+    <div class="pin-pad">
+      <button class="pin-key" onclick="pressPin('1')">1</button>
+      <button class="pin-key" onclick="pressPin('2')">2</button>
+      <button class="pin-key" onclick="pressPin('3')">3</button>
+      <button class="pin-key" onclick="pressPin('4')">4</button>
+      <button class="pin-key" onclick="pressPin('5')">5</button>
+      <button class="pin-key" onclick="pressPin('6')">6</button>
+      <button class="pin-key" onclick="pressPin('7')">7</button>
+      <button class="pin-key" onclick="pressPin('8')">8</button>
+      <button class="pin-key" onclick="pressPin('9')">9</button>
+      <button class="pin-key ghost" id="btnVaultBio" onclick="unlockWithBiometric()">Bio</button>
+      <button class="pin-key" onclick="pressPin('0')">0</button>
+      <button class="pin-key ghost" onclick="backspacePin()">Del</button>
+    </div>
+
+    <button class="tap-another" id="btnVaultSkipSetup" style="display:none; margin-top:8px;" onclick="skipVaultSetup()">Skip passcode for now</button>
+  </div>
+
   <div class="app-shell">
     <!-- TAB 1: JOURNAL -->
     <section class="view active" id="view-journal">
       <div class="top-bar">
         <h1 class="page-title">Journal</h1>
         <div class="header-actions">
+          <button class="icon-circle-btn" id="btnLockNow" title="Lock Vault" aria-label="Lock Vault" style="display:none;">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </button>
           <button class="icon-circle-btn" id="btnToggleSearch" aria-label="Search">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
           </button>
@@ -964,7 +1254,7 @@
 
       <div id="chatEmptyHero" class="chat-hero">
         <h2>A conversation with<br>your past self.</h2>
-        <p>Your entries stay private — only the relevant moments are read to answer.</p>
+        <p>Your entries stay encrypted locally — only the relevant moments are sent when you ask a question.</p>
         <div class="prompt-pills">
           <button class="prompt-pill" onclick="sendChatPrompt('When was I happiest?')">When was I happiest?</button>
           <button class="prompt-pill" onclick="sendChatPrompt('What have I learned recently?')">What have I learned recently?</button>
@@ -1117,10 +1407,35 @@
   <div class="sheet-overlay" id="settingsSheet">
     <div class="sheet-card">
       <div class="sheet-header">
-        <h2 style="font-size:22px;">Settings</h2>
+        <h2 style="font-size:22px;">Settings &amp; Security</h2>
         <button class="icon-circle-btn" onclick="closeSheet('settingsSheet')" aria-label="Close">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
+      </div>
+
+      <!-- SECURITY STATUS CARD -->
+      <div class="security-card">
+        <div class="security-status" id="securityStatusText">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <span>Vault Status: Unprotected</span>
+        </div>
+        <div style="font-size:12px; color:var(--text-muted); line-height:1.45; margin-bottom:10px;">
+          When enabled, all journal entries, chat history, reflections, and your Gemini API key are encrypted with <strong>AES-256-GCM</strong> (PBKDF2 150k rounds) before touching browser storage.
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+          <button class="secondary-btn" id="btnConfigurePin">Set / Change PIN</button>
+          <button class="secondary-btn" id="btnEnableBio">Enable Biometric</button>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label" for="autoLockSelect">Auto-Lock Vault</label>
+        <select class="select-input" id="autoLockSelect">
+          <option value="0">Immediately when app goes to background</option>
+          <option value="60000">After 1 minute of inactivity</option>
+          <option value="300000">After 5 minutes of inactivity</option>
+          <option value="-1">Manual lock only</option>
+        </select>
       </div>
 
       <div class="toggle-row">
@@ -1132,19 +1447,38 @@
       </div>
 
       <div class="field-group">
-        <label class="field-label" for="apiKeyInput">Gemini API Key (gemini-2.5-flash)</label>
-        <input type="password" class="text-input" id="apiKeyInput" placeholder="AIzaSy..." />
+        <label class="field-label" for="apiKeyInput">Gemini API Key (Encrypted inside vault)</label>
+        <input type="password" class="text-input" id="apiKeyInput" placeholder="AIzaSy..." autocomplete="off" />
         <div style="font-size:11.5px; color:var(--text-muted); margin-top:6px;">
-          Stored locally in your browser. Keeps all filler words ("um", "you know") intact while adding natural punctuation &amp; titles.
+          Direct HTTPS calls only to Google's API. Zero third-party servers. Keeps all filler words ("um", "you know") intact.
         </div>
       </div>
 
-      <button class="primary-btn" id="btnSaveSettings" style="margin-bottom:16px;">Save Settings</button>
+      <button class="primary-btn" id="btnSaveSettings" style="margin-bottom:14px;">Save Settings</button>
 
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-        <button class="secondary-btn" id="btnExportBackup">Export JSON</button>
-        <button class="secondary-btn" id="btnImportTrigger">Import JSON</button>
+        <button class="secondary-btn" id="btnExportBackup">Export Backup</button>
+        <button class="secondary-btn" id="btnImportTrigger">Import Backup</button>
         <input type="file" id="importFileInput" accept=".json" style="display:none;" />
+      </div>
+
+      <button class="danger-btn" id="btnResetTrigger">Reset All Journal Data</button>
+    </div>
+  </div>
+
+  <!-- 3-STEP RESET CONFIRMATION DIALOG -->
+  <div class="dialog-overlay" id="resetDialog">
+    <div class="dialog-box">
+      <div class="step-dots">
+        <span class="step-dot active" id="resetDot1"></span>
+        <span class="step-dot" id="resetDot2"></span>
+        <span class="step-dot" id="resetDot3"></span>
+      </div>
+      <h3 class="dialog-title serif" id="resetDialogTitle">Are you sure? (1 of 3)</h3>
+      <p class="dialog-desc" id="resetDialogDesc">This will erase all your recorded voice entries, mood history, and reflections from this device.</p>
+      <div class="dialog-actions">
+        <button class="dialog-cancel-btn" id="btnResetCancel">Cancel</button>
+        <button class="dialog-ok-btn" id="btnResetOk" disabled>OK (3s)</button>
       </div>
     </div>
   </div>
@@ -1156,13 +1490,347 @@
       });
     }
 
-    const STORAGE_KEYS = {
+    // ==========================================
+    // WEB CRYPTO AES-256-GCM VAULT ENGINE
+    // ==========================================
+    const VAULT_META_KEY = 'vj_vault_meta_v1';
+    const VAULT_BLOB_KEY = 'vj_vault_blob_v1';
+    const LEGACY_KEYS = {
       ENTRIES: 'vj_entries_v1',
       SETTINGS: 'vj_settings_v1',
       REFLECTION: 'vj_reflection_v1',
       CHAT: 'vj_chat_v1'
     };
 
+    let vaultMeta = JSON.parse(localStorage.getItem(VAULT_META_KEY) || 'null');
+    let activeCryptoKey = null;
+    let activePinString = null;
+    let isVaultLocked = false;
+
+    let appState = {
+      entries: [],
+      settings: { theme: 'light', apiKey: '', autoLockMs: 0 },
+      reflection: null,
+      chat: []
+    };
+
+    function bufToB64(buf) {
+      return btoa(String.fromCharCode(...new Uint8Array(buf)));
+    }
+    function b64ToBuf(b64) {
+      const bin = atob(b64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      return bytes.buffer;
+    }
+
+    async function deriveKeyFromPin(pin, saltB64) {
+      const enc = new TextEncoder();
+      const keyMaterial = await crypto.subtle.importKey(
+        'raw', enc.encode(pin), { name: 'PBKDF2' }, false, ['deriveKey']
+      );
+      return crypto.subtle.deriveKey(
+        {
+          name: 'PBKDF2',
+          salt: b64ToBuf(saltB64),
+          iterations: 150000,
+          hash: 'SHA-256'
+        },
+        keyMaterial,
+        { name: 'AES-GCM', length: 256 },
+        false,
+        ['encrypt', 'decrypt']
+      );
+    }
+
+    async function encryptVaultState() {
+      if (!vaultMeta || !vaultMeta.enabled || !activeCryptoKey) {
+        // Fallback unencrypted storage only if user explicitly skipped PIN setup
+        localStorage.setItem(LEGACY_KEYS.ENTRIES, JSON.stringify(appState.entries));
+        localStorage.setItem(LEGACY_KEYS.SETTINGS, JSON.stringify(appState.settings));
+        localStorage.setItem(LEGACY_KEYS.REFLECTION, JSON.stringify(appState.reflection));
+        localStorage.setItem(LEGACY_KEYS.CHAT, JSON.stringify(appState.chat));
+        return;
+      }
+
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+      const plaintext = new TextEncoder().encode(JSON.stringify(appState));
+      const cipherBuf = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, activeCryptoKey, plaintext);
+      localStorage.setItem(VAULT_BLOB_KEY, JSON.stringify({
+        iv: bufToB64(iv),
+        ct: bufToB64(cipherBuf)
+      }));
+
+      // Purge any plaintext remnants from localStorage
+      Object.values(LEGACY_KEYS).forEach(k => localStorage.removeItem(k));
+    }
+
+    async function decryptVaultState(key) {
+      const rawBlob = localStorage.getItem(VAULT_BLOB_KEY);
+      if (!rawBlob) return true;
+      const parsed = JSON.parse(rawBlob);
+      const plainBuf = await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv: new Uint8Array(b64ToBuf(parsed.iv)) },
+        key,
+        b64ToBuf(parsed.ct)
+      );
+      const decoded = JSON.parse(new TextDecoder().decode(plainBuf));
+      appState = {
+        entries: decoded.entries || [],
+        settings: Object.assign({ theme: 'light', apiKey: '', autoLockMs: 0 }, decoded.settings || {}),
+        reflection: decoded.reflection || null,
+        chat: decoded.chat || []
+      };
+      return true;
+    }
+
+    function loadUnencryptedLegacy() {
+      appState.entries = JSON.parse(localStorage.getItem(LEGACY_KEYS.ENTRIES) || '[]');
+      appState.settings = Object.assign({ theme: 'light', apiKey: '', autoLockMs: 0 }, JSON.parse(localStorage.getItem(LEGACY_KEYS.SETTINGS) || '{}'));
+      appState.reflection = JSON.parse(localStorage.getItem(LEGACY_KEYS.REFLECTION) || 'null');
+      appState.chat = JSON.parse(localStorage.getItem(LEGACY_KEYS.CHAT) || '[]');
+    }
+
+    // ==========================================
+    // PIN & BIOMETRIC VAULT UI LOGIC
+    // ==========================================
+    let pinMode = 'unlock'; // 'unlock' | 'setup1' | 'setup2'
+    let pinBuffer = '';
+    let firstSetupPin = '';
+
+    function updatePinDots() {
+      const dots = document.querySelectorAll('#pinDots .pin-dot');
+      dots.forEach((d, idx) => d.classList.toggle('filled', idx < pinBuffer.length));
+    }
+
+    function openVaultScreen(mode) {
+      pinMode = mode;
+      pinBuffer = '';
+      firstSetupPin = '';
+      updatePinDots();
+      document.getElementById('vaultError').textContent = '';
+
+      const title = document.getElementById('vaultTitle');
+      const sub = document.getElementById('vaultSub');
+      const skipBtn = document.getElementById('btnVaultSkipSetup');
+      const bioBtn = document.getElementById('btnVaultBio');
+
+      if (mode === 'setup1') {
+        title.textContent = 'Create Vault PIN';
+        sub.textContent = 'Set a 4-digit passcode to encrypt your journal entries & API key with AES-256.';
+        skipBtn.style.display = vaultMeta ? 'none' : 'inline-block';
+        bioBtn.style.visibility = 'hidden';
+      } else if (mode === 'setup2') {
+        title.textContent = 'Confirm PIN';
+        sub.textContent = 'Re-enter your 4-digit passcode to lock in your encryption key.';
+        skipBtn.style.display = 'none';
+        bioBtn.style.visibility = 'hidden';
+      } else {
+        title.textContent = 'Unlock Journal';
+        sub.textContent = 'Enter your 4-digit passcode to decrypt your journal.';
+        skipBtn.style.display = 'none';
+        bioBtn.style.visibility = (vaultMeta && vaultMeta.bioCredId) ? 'visible' : 'hidden';
+      }
+
+      document.getElementById('vaultScreen').classList.add('open');
+    }
+
+    async function pressPin(digit) {
+      if (pinBuffer.length >= 4) return;
+      pinBuffer += digit;
+      updatePinDots();
+      document.getElementById('vaultError').textContent = '';
+
+      if (pinBuffer.length === 4) {
+        const entered = pinBuffer;
+        setTimeout(async () => {
+          if (pinMode === 'setup1') {
+            firstSetupPin = entered;
+            openVaultScreen('setup2');
+          } else if (pinMode === 'setup2') {
+            if (entered !== firstSetupPin) {
+              document.getElementById('vaultError').textContent = 'PINs did not match. Try again.';
+              setTimeout(() => openVaultScreen('setup1'), 700);
+              return;
+            }
+            const salt = bufToB64(crypto.getRandomValues(new Uint8Array(16)));
+            const key = await deriveKeyFromPin(entered, salt);
+            vaultMeta = {
+              enabled: true,
+              salt,
+              bioCredId: vaultMeta ? vaultMeta.bioCredId : null,
+              bioWrappedPin: vaultMeta ? vaultMeta.bioWrappedPin : null
+            };
+            localStorage.setItem(VAULT_META_KEY, JSON.stringify(vaultMeta));
+            activeCryptoKey = key;
+            activePinString = entered;
+            await encryptVaultState();
+            completeUnlockUI();
+            showToast('AES-256 Vault Enabled');
+          } else {
+            try {
+              const key = await deriveKeyFromPin(entered, vaultMeta.salt);
+              await decryptVaultState(key);
+              activeCryptoKey = key;
+              activePinString = entered;
+              completeUnlockUI();
+            } catch (_) {
+              pinBuffer = '';
+              updatePinDots();
+              document.getElementById('vaultError').textContent = 'Incorrect passcode';
+            }
+          }
+        }, 120);
+      }
+    }
+
+    function backspacePin() {
+      pinBuffer = pinBuffer.slice(0, -1);
+      updatePinDots();
+    }
+
+    function skipVaultSetup() {
+      vaultMeta = { enabled: false };
+      localStorage.setItem(VAULT_META_KEY, JSON.stringify(vaultMeta));
+      loadUnencryptedLegacy();
+      completeUnlockUI();
+    }
+
+    function completeUnlockUI() {
+      isVaultLocked = false;
+      document.getElementById('vaultScreen').classList.remove('open');
+      applyTheme(appState.settings.theme || 'light');
+      updateSecurityUI();
+      renderJournal();
+      renderCalendar();
+      renderChat();
+      renderInsights();
+      resetInactivityTimer();
+    }
+
+    function lockVaultNow() {
+      if (!vaultMeta || !vaultMeta.enabled) return;
+      isVaultLocked = true;
+      activeCryptoKey = null;
+      activePinString = null;
+      // Clear decrypted memory from DOM & RAM
+      appState.entries = [];
+      appState.settings.apiKey = '';
+      appState.reflection = null;
+      appState.chat = [];
+      document.getElementById('journalList').innerHTML = '';
+      document.getElementById('chatMessages').innerHTML = '';
+      document.getElementById('reflectionText').textContent = '';
+      closeSheet('detailSheet');
+      closeSheet('settingsSheet');
+      openVaultScreen('unlock');
+    }
+
+    // Biometric Unlock (WebAuthn Platform Authenticator on Galaxy S24 FE)
+    async function enableBiometricUnlock() {
+      if (!vaultMeta || !vaultMeta.enabled || !activePinString) {
+        showToast('Set a 4-digit Vault PIN first');
+        return;
+      }
+      if (!window.PublicKeyCredential) {
+        showToast('Biometrics not supported in this browser');
+        return;
+      }
+      try {
+        const challenge = crypto.getRandomValues(new Uint8Array(32));
+        const userId = crypto.getRandomValues(new Uint8Array(16));
+        const cred = await navigator.credentials.create({
+          publicKey: {
+            challenge,
+            rp: { name: "Voice Journal Vault" },
+            user: { id: userId, name: "owner@voicejournal", displayName: "Journal Owner" },
+            pubKeyCredParams: [{ alg: -7, type: "public-key" }, { alg: -257, type: "public-key" }],
+            authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required" },
+            timeout: 60000
+          }
+        });
+        // Store credential ID and XOR-obfuscated PIN tied to device biometric check
+        const pinBytes = new TextEncoder().encode(activePinString);
+        const mask = new Uint8Array(cred.rawId).slice(0, pinBytes.length);
+        const wrapped = pinBytes.map((b, i) => b ^ mask[i]);
+        vaultMeta.bioCredId = bufToB64(cred.rawId);
+        vaultMeta.bioWrappedPin = bufToB64(wrapped);
+        localStorage.setItem(VAULT_META_KEY, JSON.stringify(vaultMeta));
+        updateSecurityUI();
+        showToast('Fingerprint / Face unlock enabled');
+      } catch (_) {
+        showToast('Biometric setup canceled or unavailable');
+      }
+    }
+
+    async function unlockWithBiometric() {
+      if (!vaultMeta || !vaultMeta.bioCredId || !vaultMeta.bioWrappedPin) return;
+      try {
+        const challenge = crypto.getRandomValues(new Uint8Array(32));
+        const rawIdBuf = b64ToBuf(vaultMeta.bioCredId);
+        await navigator.credentials.get({
+          publicKey: {
+            challenge,
+            allowCredentials: [{ id: rawIdBuf, type: 'public-key' }],
+            userVerification: 'required',
+            timeout: 60000
+          }
+        });
+        const wrapped = new Uint8Array(b64ToBuf(vaultMeta.bioWrappedPin));
+        const mask = new Uint8Array(rawIdBuf).slice(0, wrapped.length);
+        const pinBytes = wrapped.map((b, i) => b ^ mask[i]);
+        const recoveredPin = new TextDecoder().decode(pinBytes);
+        const key = await deriveKeyFromPin(recoveredPin, vaultMeta.salt);
+        await decryptVaultState(key);
+        activeCryptoKey = key;
+        activePinString = recoveredPin;
+        completeUnlockUI();
+      } catch (_) {
+        document.getElementById('vaultError').textContent = 'Biometric check failed — enter PIN';
+      }
+    }
+
+    function updateSecurityUI() {
+      const enabled = vaultMeta && vaultMeta.enabled;
+      document.getElementById('btnLockNow').style.display = enabled ? 'inline-flex' : 'none';
+      const statusEl = document.getElementById('securityStatusText');
+      if (enabled) {
+        statusEl.style.color = 'var(--success)';
+        statusEl.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><span>AES-256 Vault Active ${vaultMeta.bioCredId ? '• Biometric Ready' : ''}</span>`;
+      } else {
+        statusEl.style.color = 'var(--danger)';
+        statusEl.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><span>Vault Unprotected — Set a PIN below</span>`;
+      }
+    }
+
+    // Auto-Lock on visibility change & inactivity
+    let inactivityTimer = null;
+    function resetInactivityTimer() {
+      if (inactivityTimer) clearTimeout(inactivityTimer);
+      const ms = Number(appState.settings.autoLockMs ?? 0);
+      if (ms > 0 && vaultMeta && vaultMeta.enabled && !isVaultLocked) {
+        inactivityTimer = setTimeout(lockVaultNow, ms);
+      }
+    }
+    ['click', 'touchstart', 'keydown'].forEach(evt => {
+      window.addEventListener(evt, resetInactivityTimer, { passive: true });
+    });
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && vaultMeta && vaultMeta.enabled && Number(appState.settings.autoLockMs ?? 0) === 0) {
+        lockVaultNow();
+      }
+    });
+
+    document.getElementById('btnLockNow').onclick = lockVaultNow;
+    document.getElementById('btnConfigurePin').onclick = () => {
+      closeSheet('settingsSheet');
+      openVaultScreen('setup1');
+    };
+    document.getElementById('btnEnableBio').onclick = enableBiometricUnlock;
+
+    // ==========================================
+    // APP LOGIC
+    // ==========================================
     const PROMPTS = [
       "Who did you speak to, and what stayed with you?",
       "What felt heavy today, and what felt unexpectedly light?",
@@ -1170,11 +1838,6 @@
       "What are you avoiding right now, honestly?",
       "What gave you energy today, even for five minutes?"
     ];
-
-    let entries = JSON.parse(localStorage.getItem(STORAGE_KEYS.ENTRIES) || '[]');
-    let settings = JSON.parse(localStorage.getItem(STORAGE_KEYS.SETTINGS) || '{"theme":"light","apiKey":""}');
-    let savedReflection = JSON.parse(localStorage.getItem(STORAGE_KEYS.REFLECTION) || 'null');
-    let chatHistory = JSON.parse(localStorage.getItem(STORAGE_KEYS.CHAT) || '[]');
 
     let promptIndex = 0;
     let isRecording = false;
@@ -1205,7 +1868,6 @@
       document.getElementById('darkModeToggle').checked = theme === 'dark';
       document.getElementById('themeColorMeta').setAttribute('content', theme === 'dark' ? '#141311' : '#F6F3EC');
     }
-    applyTheme(settings.theme || 'light');
 
     function switchTab(tab) {
       document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
@@ -1223,14 +1885,14 @@
       const empty = document.getElementById('journalEmpty');
       const q = filter.trim().toLowerCase();
 
-      const filtered = entries.filter(e =>
+      const filtered = appState.entries.filter(e =>
         !q ||
         e.title.toLowerCase().includes(q) ||
         e.formatted.toLowerCase().includes(q) ||
         (e.tags || []).some(t => t.toLowerCase().includes(q))
       );
 
-      if (entries.length === 0) {
+      if (appState.entries.length === 0) {
         empty.style.display = 'flex';
         list.innerHTML = '';
         return;
@@ -1376,7 +2038,7 @@
     document.getElementById('btnWriteInstead').onclick = () => toggleWriteMode();
 
     async function processEntryWithAI(rawText) {
-      const apiKey = (settings.apiKey || '').trim();
+      const apiKey = (appState.settings.apiKey || '').trim();
       if (!apiKey) {
         return localHumanFormat(rawText);
       }
@@ -1443,7 +2105,7 @@ Return valid JSON matching the schema.`;
 
       const btn = isManualMode ? document.getElementById('btnSaveManual') : document.getElementById('btnSaveVoice');
       const prevLabel = btn.textContent;
-      btn.textContent = 'Formatting...';
+      btn.textContent = 'Encrypting & saving...';
       btn.disabled = true;
 
       const result = await processEntryWithAI(text);
@@ -1460,21 +2122,21 @@ Return valid JSON matching the schema.`;
         tags: result.tags || []
       };
 
-      entries.unshift(newEntry);
-      localStorage.setItem(STORAGE_KEYS.ENTRIES, JSON.stringify(entries));
+      appState.entries.unshift(newEntry);
+      await encryptVaultState();
 
       btn.textContent = prevLabel;
       btn.disabled = false;
       document.getElementById('recordModal').classList.remove('open');
       renderJournal();
-      showToast('Entry saved');
+      showToast('Encrypted & saved');
     }
 
     document.getElementById('btnSaveVoice').onclick = () => handleSaveEntry(finalTranscript);
     document.getElementById('btnSaveManual').onclick = () => handleSaveEntry(document.getElementById('manualTextarea').value);
 
     function openEntryDetail(id) {
-      const entry = entries.find(e => e.id === id);
+      const entry = appState.entries.find(e => e.id === id);
       if (!entry) return;
       activeDetailId = id;
       const d = new Date(entry.createdAt);
@@ -1487,10 +2149,10 @@ Return valid JSON matching the schema.`;
       document.getElementById('detailSheet').classList.add('open');
     }
 
-    document.getElementById('btnDeleteEntry').onclick = () => {
+    document.getElementById('btnDeleteEntry').onclick = async () => {
       if (!activeDetailId) return;
-      entries = entries.filter(e => e.id !== activeDetailId);
-      localStorage.setItem(STORAGE_KEYS.ENTRIES, JSON.stringify(entries));
+      appState.entries = appState.entries.filter(e => e.id !== activeDetailId);
+      await encryptVaultState();
       closeSheet('detailSheet');
       renderJournal();
       renderCalendar();
@@ -1502,7 +2164,7 @@ Return valid JSON matching the schema.`;
     }
 
     function computeStreaks() {
-      const uniqueDays = [...new Set(entries.map(e => e.dateKey))].sort().reverse();
+      const uniqueDays = [...new Set(appState.entries.map(e => e.dateKey))].sort().reverse();
       document.getElementById('statDays').textContent = uniqueDays.length;
 
       let streak = 0;
@@ -1529,7 +2191,7 @@ Return valid JSON matching the schema.`;
 
       const firstDay = new Date(year, month, 1).getDay();
       const daysInMonth = new Date(year, month + 1, 0).getDate();
-      const entryDates = new Set(entries.map(e => e.dateKey));
+      const entryDates = new Set(appState.entries.map(e => e.dateKey));
 
       const grid = document.getElementById('calDaysGrid');
       let html = '';
@@ -1560,7 +2222,7 @@ Return valid JSON matching the schema.`;
         titleEl.textContent = new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
       }
 
-      const dayEntries = entries.filter(e => e.dateKey === selectedDateStr);
+      const dayEntries = appState.entries.filter(e => e.dateKey === selectedDateStr);
       const box = document.getElementById('selectedDayEntries');
       if (dayEntries.length === 0) {
         box.innerHTML = `<p style="color:var(--text-muted); font-size:14.5px;">Nothing recorded on this day.</p>`;
@@ -1584,13 +2246,13 @@ Return valid JSON matching the schema.`;
     function renderChat() {
       const hero = document.getElementById('chatEmptyHero');
       const list = document.getElementById('chatMessages');
-      if (chatHistory.length === 0) {
+      if (appState.chat.length === 0) {
         hero.style.display = 'block';
         list.innerHTML = '';
         return;
       }
       hero.style.display = 'none';
-      list.innerHTML = chatHistory.map(m => `<div class="chat-bubble ${m.role}">${escapeHtml(m.text)}</div>`).join('');
+      list.innerHTML = appState.chat.map(m => `<div class="chat-bubble ${m.role}">${escapeHtml(m.text)}</div>`).join('');
     }
 
     async function sendChatPrompt(text) {
@@ -1598,24 +2260,24 @@ Return valid JSON matching the schema.`;
       if (!q) return;
       document.getElementById('chatInput').value = '';
 
-      chatHistory.push({ role: 'user', text: q });
+      appState.chat.push({ role: 'user', text: q });
       renderChat();
 
-      const apiKey = (settings.apiKey || '').trim();
-      if (!apiKey || entries.length === 0) {
-        const reply = entries.length === 0
+      const apiKey = (appState.settings.apiKey || '').trim();
+      if (!apiKey || appState.entries.length === 0) {
+        const reply = appState.entries.length === 0
           ? "You haven't recorded any journal entries yet. Tap the microphone below to capture your first reflection, and we can talk through it anytime."
           : "Add your Gemini API key in Settings to unlock AI conversations across your journal entries. For now, you can browse and search all your reflections in the Journal tab.";
-        chatHistory.push({ role: 'ai', text: reply });
-        localStorage.setItem(STORAGE_KEYS.CHAT, JSON.stringify(chatHistory));
+        appState.chat.push({ role: 'ai', text: reply });
+        await encryptVaultState();
         renderChat();
         return;
       }
 
-      chatHistory.push({ role: 'ai', text: 'Reflecting on your entries...' });
+      appState.chat.push({ role: 'ai', text: 'Reflecting on your entries...' });
       renderChat();
 
-      const context = entries.slice(0, 25).map(e => `[${e.dateKey}] (${e.moodLabel} ${e.moodScore}/10) ${e.title}: ${e.formatted}`).join("\n\n");
+      const context = appState.entries.slice(0, 25).map(e => `[${e.dateKey}] (${e.moodLabel} ${e.moodScore}/10) ${e.title}: ${e.formatted}`).join("\n\n");
       const prompt = "You are a thoughtful, grounded reflection companion helping the user explore their own voice journal entries. Answer warmly and concisely based ONLY on these entries:\n\n" + context + "\n\nUser question: " + q;
 
       try {
@@ -1626,26 +2288,26 @@ Return valid JSON matching the schema.`;
         });
         const data = await res.json();
         const answer = data.candidates?.[0]?.content?.parts?.[0]?.text || "I couldn't read a response right now.";
-        chatHistory[chatHistory.length - 1] = { role: 'ai', text: answer };
+        appState.chat[appState.chat.length - 1] = { role: 'ai', text: answer };
       } catch (_) {
-        chatHistory[chatHistory.length - 1] = { role: 'ai', text: 'Network or API key error while reading your entries.' };
+        appState.chat[appState.chat.length - 1] = { role: 'ai', text: 'Network or API key error while reading your entries.' };
       }
-      localStorage.setItem(STORAGE_KEYS.CHAT, JSON.stringify(chatHistory));
+      await encryptVaultState();
       renderChat();
     }
 
     document.getElementById('btnSendChat').onclick = () => sendChatPrompt();
     document.getElementById('chatInput').onkeydown = (e) => { if (e.key === 'Enter') sendChatPrompt(); };
-    document.getElementById('btnClearChat').onclick = () => {
-      chatHistory = [];
-      localStorage.removeItem(STORAGE_KEYS.CHAT);
+    document.getElementById('btnClearChat').onclick = async () => {
+      appState.chat = [];
+      await encryptVaultState();
       renderChat();
     };
 
     function renderInsights() {
       const empty = document.getElementById('insightsEmpty');
       const content = document.getElementById('insightsContent');
-      if (entries.length === 0) {
+      if (appState.entries.length === 0) {
         empty.style.display = 'flex';
         content.style.display = 'none';
         return;
@@ -1653,7 +2315,7 @@ Return valid JSON matching the schema.`;
       empty.style.display = 'none';
       content.style.display = 'block';
 
-      const recent = entries.slice(0, 7).reverse();
+      const recent = appState.entries.slice(0, 7).reverse();
       document.getElementById('moodBars').innerHTML = recent.map(e => {
         const pct = Math.max(12, Math.min(100, (e.moodScore || 7) * 10));
         const label = new Date(e.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -1665,14 +2327,17 @@ Return valid JSON matching the schema.`;
         `;
       }).join('');
 
-      if (savedReflection) {
-        document.getElementById('reflectionText').textContent = savedReflection.text;
-        document.getElementById('reflectionUpdatedAt').textContent = `Updated ${savedReflection.updatedAt}`;
+      if (appState.reflection) {
+        document.getElementById('reflectionText').textContent = appState.reflection.text;
+        document.getElementById('reflectionUpdatedAt').textContent = `Updated ${appState.reflection.updatedAt}`;
+      } else {
+        document.getElementById('reflectionText').textContent = 'Tap below to generate a thoughtful reflection across your entries.';
+        document.getElementById('reflectionUpdatedAt').textContent = 'A synthesis of your recent thoughts & patterns';
       }
     }
 
     document.getElementById('btnGenerateReflection').onclick = async () => {
-      const apiKey = (settings.apiKey || '').trim();
+      const apiKey = (appState.settings.apiKey || '').trim();
       if (!apiKey) {
         showToast('Add your Gemini API key in Settings first');
         return;
@@ -1681,7 +2346,7 @@ Return valid JSON matching the schema.`;
       btn.textContent = 'Synthesizing your chapter...';
       btn.disabled = true;
 
-      const context = entries.slice(0, 20).map(e => `[${e.dateKey}] (${e.moodLabel}, ${e.moodScore}/10) ${e.title}: ${e.formatted}`).join("\n\n");
+      const context = appState.entries.slice(0, 20).map(e => `[${e.dateKey}] (${e.moodLabel}, ${e.moodScore}/10) ${e.title}: ${e.formatted}`).join("\n\n");
       const prompt = "Read these recent voice journal entries and write a warm, insightful, grounded second-person (\"You...\") reflection on the user's current life chapter. Highlight recurring emotional patterns, quiet wins, and one gentle question to sit with. Keep it under 180 words.\n\n" + context;
 
       try {
@@ -1692,11 +2357,11 @@ Return valid JSON matching the schema.`;
         });
         const data = await res.json();
         const text = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Unable to generate reflection right now.';
-        savedReflection = {
+        appState.reflection = {
           text,
           updatedAt: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
         };
-        localStorage.setItem(STORAGE_KEYS.REFLECTION, JSON.stringify(savedReflection));
+        await encryptVaultState();
         renderInsights();
       } catch (_) {
         showToast('Error generating reflection');
@@ -1705,29 +2370,47 @@ Return valid JSON matching the schema.`;
       btn.disabled = false;
     };
 
+    // Settings & Encrypted Backup
     document.getElementById('btnOpenSettings').onclick = () => {
-      document.getElementById('apiKeyInput').value = settings.apiKey || '';
-      document.getElementById('darkModeToggle').checked = settings.theme === 'dark';
+      document.getElementById('apiKeyInput').value = appState.settings.apiKey || '';
+      document.getElementById('darkModeToggle').checked = appState.settings.theme === 'dark';
+      document.getElementById('autoLockSelect').value = String(appState.settings.autoLockMs ?? 0);
+      updateSecurityUI();
       document.getElementById('settingsSheet').classList.add('open');
     };
 
-    document.getElementById('darkModeToggle').onchange = (e) => {
-      settings.theme = e.target.checked ? 'dark' : 'light';
-      applyTheme(settings.theme);
-      localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
+    document.getElementById('darkModeToggle').onchange = async (e) => {
+      appState.settings.theme = e.target.checked ? 'dark' : 'light';
+      applyTheme(appState.settings.theme);
+      await encryptVaultState();
     };
 
-    document.getElementById('btnSaveSettings').onclick = () => {
-      settings.apiKey = document.getElementById('apiKeyInput').value.trim();
-      settings.theme = document.getElementById('darkModeToggle').checked ? 'dark' : 'light';
-      localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
-      applyTheme(settings.theme);
+    document.getElementById('btnSaveSettings').onclick = async () => {
+      appState.settings.apiKey = document.getElementById('apiKeyInput').value.trim();
+      appState.settings.theme = document.getElementById('darkModeToggle').checked ? 'dark' : 'light';
+      appState.settings.autoLockMs = Number(document.getElementById('autoLockSelect').value);
+      await encryptVaultState();
+      applyTheme(appState.settings.theme);
+      resetInactivityTimer();
       closeSheet('settingsSheet');
-      showToast('Settings saved');
+      showToast('Settings saved & encrypted');
     };
 
     document.getElementById('btnExportBackup').onclick = () => {
-      const blob = new Blob([JSON.stringify({ entries, exportedAt: new Date().toISOString() }, null, 2)], { type: 'application/json' });
+      // Exports raw encrypted vault envelope if vault is enabled, or JSON if unlocked
+      const payload = (vaultMeta && vaultMeta.enabled && localStorage.getItem(VAULT_BLOB_KEY))
+        ? {
+            encryptedVault: true,
+            meta: { salt: vaultMeta.salt },
+            blob: JSON.parse(localStorage.getItem(VAULT_BLOB_KEY)),
+            exportedAt: new Date().toISOString()
+          }
+        : {
+            encryptedVault: false,
+            entries: appState.entries,
+            exportedAt: new Date().toISOString()
+          };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -1741,14 +2424,21 @@ Return valid JSON matching the schema.`;
       const file = e.target.files[0];
       if (!file) return;
       const reader = new FileReader();
-      reader.onload = (ev) => {
+      reader.onload = async (ev) => {
         try {
           const parsed = JSON.parse(ev.target.result);
-          if (Array.isArray(parsed.entries)) {
-            entries = parsed.entries;
-            localStorage.setItem(STORAGE_KEYS.ENTRIES, JSON.stringify(entries));
+          if (parsed.encryptedVault && parsed.meta && parsed.blob) {
+            localStorage.setItem(VAULT_META_KEY, JSON.stringify({ enabled: true, salt: parsed.meta.salt }));
+            localStorage.setItem(VAULT_BLOB_KEY, JSON.stringify(parsed.blob));
+            vaultMeta = JSON.parse(localStorage.getItem(VAULT_META_KEY));
+            closeSheet('settingsSheet');
+            openVaultScreen('unlock');
+            showToast('Encrypted vault imported — enter PIN to unlock');
+          } else if (Array.isArray(parsed.entries)) {
+            appState.entries = parsed.entries;
+            await encryptVaultState();
             renderJournal();
-            showToast(`Imported ${entries.length} entries`);
+            showToast(`Imported ${appState.entries.length} entries`);
             closeSheet('settingsSheet');
           }
         } catch (_) {
@@ -1758,7 +2448,106 @@ Return valid JSON matching the schema.`;
       reader.readAsText(file);
     };
 
-    renderJournal();
+    // 3-Step Reset Confirmation with Escalating OK Timer (Step 1: 3s, Step 2: 5s, Step 3: 8s)
+    const RESET_STEPS = [
+      {
+        title: "Are you sure? (1 of 3)",
+        desc: "This will permanently delete all your journal entries, mood history, and AI life reflections stored on this device.",
+        delay: 3
+      },
+      {
+        title: "Really sure? (2 of 3)",
+        desc: "Have you exported a backup? Once wiped, your encrypted vault and past reflections cannot be recovered.",
+        delay: 5
+      },
+      {
+        title: "Final confirmation (3 of 3)",
+        desc: "Tap Wipe & Reset when the timer finishes to erase everything back to a clean slate.",
+        delay: 8
+      }
+    ];
+
+    let resetStepIdx = 0;
+    let resetTimerId = null;
+
+    function startResetStep(idx) {
+      resetStepIdx = idx;
+      const step = RESET_STEPS[idx];
+      document.getElementById('resetDialogTitle').textContent = step.title;
+      document.getElementById('resetDialogDesc').textContent = step.desc;
+
+      document.getElementById('resetDot1').classList.toggle('active', idx >= 0);
+      document.getElementById('resetDot2').classList.toggle('active', idx >= 1);
+      document.getElementById('resetDot3').classList.toggle('active', idx >= 2);
+
+      const okBtn = document.getElementById('btnResetOk');
+      if (resetTimerId) clearInterval(resetTimerId);
+
+      let remaining = step.delay;
+      okBtn.disabled = true;
+      okBtn.textContent = `OK (${remaining}s)`;
+
+      resetTimerId = setInterval(() => {
+        remaining--;
+        if (remaining > 0) {
+          okBtn.textContent = `OK (${remaining}s)`;
+        } else {
+          clearInterval(resetTimerId);
+          resetTimerId = null;
+          okBtn.disabled = false;
+          okBtn.textContent = idx === 2 ? 'Wipe & Reset' : 'OK';
+        }
+      }, 1000);
+    }
+
+    function closeResetDialog() {
+      if (resetTimerId) {
+        clearInterval(resetTimerId);
+        resetTimerId = null;
+      }
+      document.getElementById('resetDialog').classList.remove('open');
+    }
+
+    document.getElementById('btnResetTrigger').onclick = () => {
+      document.getElementById('resetDialog').classList.add('open');
+      startResetStep(0);
+    };
+
+    document.getElementById('btnResetCancel').onclick = closeResetDialog;
+
+    document.getElementById('btnResetOk').onclick = async () => {
+      if (resetStepIdx < 2) {
+        startResetStep(resetStepIdx + 1);
+      } else {
+        closeResetDialog();
+        appState.entries = [];
+        appState.reflection = null;
+        appState.chat = [];
+        await encryptVaultState();
+        closeSheet('settingsSheet');
+        renderJournal();
+        renderCalendar();
+        renderChat();
+        renderInsights();
+        switchTab('journal');
+        showToast('All journal data reset');
+      }
+    };
+
+    // ==========================================
+    // BOOTSTRAP VAULT ON LOAD
+    // ==========================================
+    (function bootstrap() {
+      if (!vaultMeta) {
+        // First time user: prompt to create a 4-digit AES-256 vault PIN
+        openVaultScreen('setup1');
+      } else if (vaultMeta.enabled) {
+        openVaultScreen('unlock');
+      } else {
+        loadUnencryptedLegacy();
+        completeUnlockUI();
+      }
+    })();
   </script>
 </body>
 </html>
