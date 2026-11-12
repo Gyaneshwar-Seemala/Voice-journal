@@ -24,9 +24,9 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>Voice Journal</title>
-  <link rel="manifest" href="./manifest.json?v=12" />
-  <link rel="icon" href="./icon-192.png?v=12" />
-  <link rel="apple-touch-icon" href="./icon-192.png?v=12" />
+  <link rel="manifest" href="./manifest.json?v=13" />
+  <link rel="icon" href="./icon-192.png?v=13" />
+  <link rel="apple-touch-icon" href="./icon-192.png?v=13" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -1587,7 +1587,10 @@
       </div>
 
       <div class="field-group">
-        <label class="field-label" for="apiKeyInput">Gemini API Key (Encrypted inside vault)</label>
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+          <label class="field-label" for="apiKeyInput" style="margin-bottom:0;">Gemini API Key (Encrypted inside vault)</label>
+          <button type="button" class="backup-mini-btn" id="btnTestApiKey">Test Key</button>
+        </div>
         <input type="password" class="text-input" id="apiKeyInput" placeholder="AIzaSy..." autocomplete="off" />
         <div style="font-size:11.5px; color:var(--text-muted); margin-top:6px;">
           Direct HTTPS calls only to Google's API. Zero third-party servers. Keeps all filler words ("um", "you know") intact.
@@ -2260,6 +2263,39 @@ STRICT RULES:
       throw new Error(lastErr);
     }
 
+    async function callGeminiText(apiKey, promptText, onStatus) {
+      const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-flash-latest'];
+      let lastErr = 'Unknown API error';
+
+      for (const model of models) {
+        if (onStatus) onStatus(`Thinking with ${model}...`);
+        try {
+          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: promptText }] }],
+              generationConfig: { temperature: 0.6 }
+            })
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            lastErr = data.error?.message || `HTTP ${res.status}`;
+            continue;
+          }
+          const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (!text) {
+            lastErr = 'Empty response from model';
+            continue;
+          }
+          return text.trim();
+        } catch (e) {
+          lastErr = e.message || 'Network error';
+        }
+      }
+      throw new Error(lastErr);
+    }
+
     async function processEntryWithAI(rawText, onStatus) {
       const apiKey = (appState.settings.apiKey || '').trim();
       if (!apiKey) {
@@ -2539,17 +2575,17 @@ STRICT RULES:
       const prompt = "You are a thoughtful, grounded reflection companion helping the user explore their own voice journal entries. Answer warmly and concisely based ONLY on these entries:\n\n" + context + "\n\nUser question: " + q;
 
       try {
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+        const answer = await callGeminiText(apiKey, prompt, (statusMsg) => {
+          appState.chat[appState.chat.length - 1] = { role: 'ai', text: statusMsg };
+          renderChat();
         });
-        const data = await res.json();
-        const answer = data.candidates?.[0]?.content?.parts?.[0]?.text || "I couldn't read a response right now.";
         appState.chat[appState.chat.length - 1] = { role: 'ai', text: answer };
         haptic('success');
-      } catch (_) {
-        appState.chat[appState.chat.length - 1] = { role: 'ai', text: 'Network or API key error while reading your entries.' };
+      } catch (err) {
+        appState.chat[appState.chat.length - 1] = {
+          role: 'ai',
+          text: `Could not reach Gemini (${err.message}). Check your API key in Settings.`
+        };
         haptic('error');
       }
       await encryptVaultState();
@@ -2615,14 +2651,7 @@ STRICT RULES:
       const prompt = "Read these recent voice journal entries and write a warm, insightful, grounded second-person (\"You...\") reflection on the user's current life chapter. Highlight recurring emotional patterns, quiet wins, and one gentle question to sit with. Keep it under 180 words.\n\n" + context;
 
       try {
-        tracker.update(52, 'Writing your life chapter synthesis...');
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-        });
-        const data = await res.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Unable to generate reflection right now.';
+        const text = await callGeminiText(apiKey, prompt, (msg) => tracker.update(58, msg));
         tracker.update(90, 'Encrypting reflection...');
         appState.reflection = {
           text,
@@ -2632,10 +2661,10 @@ STRICT RULES:
         tracker.done('Reflection ready');
         renderInsights();
         haptic('success');
-      } catch (_) {
+      } catch (err) {
         tracker.fail();
         haptic('error');
-        showToast('Error generating reflection');
+        showToast('Reflection failed: ' + (err.message || 'Check API key').slice(0, 42));
       }
       btn.textContent = 'Refresh Life Reflection';
       btn.disabled = false;
@@ -2664,6 +2693,29 @@ STRICT RULES:
       appState.settings.theme = e.target.checked ? 'dark' : 'light';
       applyTheme(appState.settings.theme);
       await encryptVaultState();
+    };
+
+    document.getElementById('btnTestApiKey').onclick = async () => {
+      const key = document.getElementById('apiKeyInput').value.trim();
+      if (!key) {
+        haptic('error');
+        showToast('Paste a Gemini API key first');
+        return;
+      }
+      haptic('light');
+      const btn = document.getElementById('btnTestApiKey');
+      btn.textContent = 'Testing...';
+      btn.disabled = true;
+      try {
+        await callGeminiText(key, 'Reply with OK');
+        haptic('success');
+        showToast('API key works!');
+      } catch (err) {
+        haptic('error');
+        showToast('Key error: ' + (err.message || 'Invalid key').slice(0, 44));
+      }
+      btn.textContent = 'Test Key';
+      btn.disabled = false;
     };
 
     document.getElementById('btnSaveSettings').onclick = async () => {
