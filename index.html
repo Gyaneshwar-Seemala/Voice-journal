@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>Voice Journal</title>
-  <link rel="manifest" href="./manifest.json" />
+  <link rel="manifest" href="./manifest.json?v=8" />
   <link rel="icon" href="./icon-192.png" />
   <link rel="apple-touch-icon" href="./icon-192.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1017,6 +1017,37 @@
       margin-bottom: 6px;
     }
 
+    .backup-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 10px;
+      max-height: 190px;
+      overflow-y: auto;
+    }
+
+    .backup-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      font-size: 12.5px;
+    }
+
+    .backup-mini-btn {
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
     /* 3-Step Reset Confirmation Dialog */
     .dialog-overlay {
       position: fixed;
@@ -1166,7 +1197,7 @@
       <button class="pin-key" onclick="pressPin('7')">7</button>
       <button class="pin-key" onclick="pressPin('8')">8</button>
       <button class="pin-key" onclick="pressPin('9')">9</button>
-      <button class="pin-key ghost" id="btnVaultBio" onclick="unlockWithBiometric()">Bio</button>
+      <button class="pin-key ghost" aria-hidden="true" tabindex="-1"></button>
       <button class="pin-key" onclick="pressPin('0')">0</button>
       <button class="pin-key ghost" onclick="backspacePin()">Del</button>
     </div>
@@ -1397,7 +1428,7 @@
       <p id="detailBody" style="font-size:15.5px; line-height:1.7; white-space:pre-line; margin-bottom:16px;"></p>
       <div id="detailTags" class="entry-tags" style="margin-bottom:16px;"></div>
       <details style="font-size:13px; color:var(--text-muted); background:var(--surface-alt); padding:12px 14px; border-radius:14px;">
-        <summary style="cursor:pointer; font-weight:600;">View unedited transcript</summary>
+        <summary style="cursor:pointer; font-weight:600;" onclick="haptic('light')">View unedited transcript</summary>
         <p id="detailRaw" style="margin-top:8px; line-height:1.5; white-space:pre-line;"></p>
       </details>
     </div>
@@ -1420,12 +1451,9 @@
           <span>Vault Status: Unprotected</span>
         </div>
         <div style="font-size:12px; color:var(--text-muted); line-height:1.45; margin-bottom:10px;">
-          When enabled, all journal entries, chat history, reflections, and your Gemini API key are encrypted with <strong>AES-256-GCM</strong> (PBKDF2 150k rounds) before touching browser storage.
+          All journal entries, chat history, reflections, and your Gemini API key are encrypted with <strong>AES-256-GCM</strong> (PBKDF2 150k rounds) using your 4-digit passcode.
         </div>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-          <button class="secondary-btn" id="btnConfigurePin">Set / Change PIN</button>
-          <button class="secondary-btn" id="btnEnableBio">Enable Biometric</button>
-        </div>
+        <button class="secondary-btn" id="btnConfigurePin">Set / Change 4-Digit PIN</button>
       </div>
 
       <div class="field-group">
@@ -1436,6 +1464,14 @@
           <option value="300000">After 5 minutes of inactivity</option>
           <option value="-1">Manual lock only</option>
         </select>
+      </div>
+
+      <div class="toggle-row">
+        <div>
+          <div style="font-weight:600; font-size:14.5px;">Tactile Haptics</div>
+          <div style="font-size:12.5px; color:var(--text-muted);">Subtle vibration feedback on taps &amp; recording</div>
+        </div>
+        <input type="checkbox" id="hapticsToggle" style="width:20px; height:20px; accent-color:var(--accent);" />
       </div>
 
       <div class="toggle-row">
@@ -1460,6 +1496,18 @@
         <button class="secondary-btn" id="btnExportBackup">Export Backup</button>
         <button class="secondary-btn" id="btnImportTrigger">Import Backup</button>
         <input type="file" id="importFileInput" accept=".json" style="display:none;" />
+      </div>
+
+      <!-- 14-DAY NIGHTLY AUTO-BACKUP VAULT -->
+      <div class="security-card" style="margin-top:14px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
+          <span style="font-weight:700; font-size:13.5px;">14-Day Nightly Snapshots</span>
+          <button class="backup-mini-btn" id="btnSnapshotNow">Backup Now</button>
+        </div>
+        <div style="font-size:11.5px; color:var(--text-muted); line-height:1.45;">
+          Automatically saves an encrypted snapshot every night in IndexedDB and retains the last 14 days.
+        </div>
+        <div class="backup-list" id="nightlyBackupList"></div>
       </div>
 
       <button class="danger-btn" id="btnResetTrigger">Reset All Journal Data</button>
@@ -1491,6 +1539,28 @@
     }
 
     // ==========================================
+    // TACTILE HAPTICS ENGINE (VIBRATION API)
+    // ==========================================
+    const HAPTIC_PATTERNS = {
+      light: 12,
+      medium: 24,
+      tick: 8,
+      recStart: [25, 35, 45],
+      recStop: [35, 30, 18],
+      success: [15, 45, 28],
+      error: [40, 35, 40, 35, 65]
+    };
+
+    function haptic(type = 'light') {
+      try {
+        if (appState && appState.settings && appState.settings.haptics === false) return;
+        if (navigator.vibrate) {
+          navigator.vibrate(HAPTIC_PATTERNS[type] || 12);
+        }
+      } catch (_) {}
+    }
+
+    // ==========================================
     // WEB CRYPTO AES-256-GCM VAULT ENGINE
     // ==========================================
     const VAULT_META_KEY = 'vj_vault_meta_v1';
@@ -1504,12 +1574,11 @@
 
     let vaultMeta = JSON.parse(localStorage.getItem(VAULT_META_KEY) || 'null');
     let activeCryptoKey = null;
-    let activePinString = null;
     let isVaultLocked = false;
 
     let appState = {
       entries: [],
-      settings: { theme: 'light', apiKey: '', autoLockMs: 0 },
+      settings: { theme: 'light', apiKey: '', autoLockMs: 0, haptics: true },
       reflection: null,
       chat: []
     };
@@ -1545,7 +1614,6 @@
 
     async function encryptVaultState() {
       if (!vaultMeta || !vaultMeta.enabled || !activeCryptoKey) {
-        // Fallback unencrypted storage only if user explicitly skipped PIN setup
         localStorage.setItem(LEGACY_KEYS.ENTRIES, JSON.stringify(appState.entries));
         localStorage.setItem(LEGACY_KEYS.SETTINGS, JSON.stringify(appState.settings));
         localStorage.setItem(LEGACY_KEYS.REFLECTION, JSON.stringify(appState.reflection));
@@ -1561,7 +1629,6 @@
         ct: bufToB64(cipherBuf)
       }));
 
-      // Purge any plaintext remnants from localStorage
       Object.values(LEGACY_KEYS).forEach(k => localStorage.removeItem(k));
     }
 
@@ -1577,7 +1644,7 @@
       const decoded = JSON.parse(new TextDecoder().decode(plainBuf));
       appState = {
         entries: decoded.entries || [],
-        settings: Object.assign({ theme: 'light', apiKey: '', autoLockMs: 0 }, decoded.settings || {}),
+        settings: Object.assign({ theme: 'light', apiKey: '', autoLockMs: 0, haptics: true }, decoded.settings || {}),
         reflection: decoded.reflection || null,
         chat: decoded.chat || []
       };
@@ -1586,13 +1653,13 @@
 
     function loadUnencryptedLegacy() {
       appState.entries = JSON.parse(localStorage.getItem(LEGACY_KEYS.ENTRIES) || '[]');
-      appState.settings = Object.assign({ theme: 'light', apiKey: '', autoLockMs: 0 }, JSON.parse(localStorage.getItem(LEGACY_KEYS.SETTINGS) || '{}'));
+      appState.settings = Object.assign({ theme: 'light', apiKey: '', autoLockMs: 0, haptics: true }, JSON.parse(localStorage.getItem(LEGACY_KEYS.SETTINGS) || '{}'));
       appState.reflection = JSON.parse(localStorage.getItem(LEGACY_KEYS.REFLECTION) || 'null');
       appState.chat = JSON.parse(localStorage.getItem(LEGACY_KEYS.CHAT) || '[]');
     }
 
     // ==========================================
-    // PIN & BIOMETRIC VAULT UI LOGIC
+    // PIN VAULT UI LOGIC
     // ==========================================
     let pinMode = 'unlock'; // 'unlock' | 'setup1' | 'setup2'
     let pinBuffer = '';
@@ -1615,23 +1682,19 @@
       const title = document.getElementById('vaultTitle');
       const sub = document.getElementById('vaultSub');
       const skipBtn = document.getElementById('btnVaultSkipSetup');
-      const bioBtn = document.getElementById('btnVaultBio');
 
       if (mode === 'setup1') {
         title.textContent = 'Create Vault PIN';
         sub.textContent = 'Set a 4-digit passcode to encrypt your journal entries & API key with AES-256.';
         skipBtn.style.display = vaultMeta ? 'none' : 'inline-block';
-        bioBtn.style.visibility = 'hidden';
       } else if (mode === 'setup2') {
         title.textContent = 'Confirm PIN';
         sub.textContent = 'Re-enter your 4-digit passcode to lock in your encryption key.';
         skipBtn.style.display = 'none';
-        bioBtn.style.visibility = 'hidden';
       } else {
         title.textContent = 'Unlock Journal';
         sub.textContent = 'Enter your 4-digit passcode to decrypt your journal.';
         skipBtn.style.display = 'none';
-        bioBtn.style.visibility = (vaultMeta && vaultMeta.bioCredId) ? 'visible' : 'hidden';
       }
 
       document.getElementById('vaultScreen').classList.add('open');
@@ -1639,6 +1702,7 @@
 
     async function pressPin(digit) {
       if (pinBuffer.length >= 4) return;
+      haptic('light');
       pinBuffer += digit;
       updatePinDots();
       document.getElementById('vaultError').textContent = '';
@@ -1648,25 +1712,22 @@
         setTimeout(async () => {
           if (pinMode === 'setup1') {
             firstSetupPin = entered;
+            haptic('medium');
             openVaultScreen('setup2');
           } else if (pinMode === 'setup2') {
             if (entered !== firstSetupPin) {
+              haptic('error');
               document.getElementById('vaultError').textContent = 'PINs did not match. Try again.';
               setTimeout(() => openVaultScreen('setup1'), 700);
               return;
             }
             const salt = bufToB64(crypto.getRandomValues(new Uint8Array(16)));
             const key = await deriveKeyFromPin(entered, salt);
-            vaultMeta = {
-              enabled: true,
-              salt,
-              bioCredId: vaultMeta ? vaultMeta.bioCredId : null,
-              bioWrappedPin: vaultMeta ? vaultMeta.bioWrappedPin : null
-            };
+            vaultMeta = { enabled: true, salt };
             localStorage.setItem(VAULT_META_KEY, JSON.stringify(vaultMeta));
             activeCryptoKey = key;
-            activePinString = entered;
             await encryptVaultState();
+            haptic('success');
             completeUnlockUI();
             showToast('AES-256 Vault Enabled');
           } else {
@@ -1674,9 +1735,10 @@
               const key = await deriveKeyFromPin(entered, vaultMeta.salt);
               await decryptVaultState(key);
               activeCryptoKey = key;
-              activePinString = entered;
+              haptic('success');
               completeUnlockUI();
             } catch (_) {
+              haptic('error');
               pinBuffer = '';
               updatePinDots();
               document.getElementById('vaultError').textContent = 'Incorrect passcode';
@@ -1687,11 +1749,13 @@
     }
 
     function backspacePin() {
+      if (pinBuffer.length > 0) haptic('light');
       pinBuffer = pinBuffer.slice(0, -1);
       updatePinDots();
     }
 
     function skipVaultSetup() {
+      haptic('medium');
       vaultMeta = { enabled: false };
       localStorage.setItem(VAULT_META_KEY, JSON.stringify(vaultMeta));
       loadUnencryptedLegacy();
@@ -1702,20 +1766,21 @@
       isVaultLocked = false;
       document.getElementById('vaultScreen').classList.remove('open');
       applyTheme(appState.settings.theme || 'light');
+      document.getElementById('hapticsToggle').checked = appState.settings.haptics !== false;
       updateSecurityUI();
       renderJournal();
       renderCalendar();
       renderChat();
       renderInsights();
       resetInactivityTimer();
+      runNightlySnapshot(false);
     }
 
-    function lockVaultNow() {
+    function lockVaultNow(silent = false) {
       if (!vaultMeta || !vaultMeta.enabled) return;
+      if (!silent) haptic('medium');
       isVaultLocked = true;
       activeCryptoKey = null;
-      activePinString = null;
-      // Clear decrypted memory from DOM & RAM
       appState.entries = [];
       appState.settings.apiKey = '';
       appState.reflection = null;
@@ -1723,73 +1788,9 @@
       document.getElementById('journalList').innerHTML = '';
       document.getElementById('chatMessages').innerHTML = '';
       document.getElementById('reflectionText').textContent = '';
-      closeSheet('detailSheet');
-      closeSheet('settingsSheet');
+      closeSheet('detailSheet', true);
+      closeSheet('settingsSheet', true);
       openVaultScreen('unlock');
-    }
-
-    // Biometric Unlock (WebAuthn Platform Authenticator on Galaxy S24 FE)
-    async function enableBiometricUnlock() {
-      if (!vaultMeta || !vaultMeta.enabled || !activePinString) {
-        showToast('Set a 4-digit Vault PIN first');
-        return;
-      }
-      if (!window.PublicKeyCredential) {
-        showToast('Biometrics not supported in this browser');
-        return;
-      }
-      try {
-        const challenge = crypto.getRandomValues(new Uint8Array(32));
-        const userId = crypto.getRandomValues(new Uint8Array(16));
-        const cred = await navigator.credentials.create({
-          publicKey: {
-            challenge,
-            rp: { name: "Voice Journal Vault" },
-            user: { id: userId, name: "owner@voicejournal", displayName: "Journal Owner" },
-            pubKeyCredParams: [{ alg: -7, type: "public-key" }, { alg: -257, type: "public-key" }],
-            authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required" },
-            timeout: 60000
-          }
-        });
-        // Store credential ID and XOR-obfuscated PIN tied to device biometric check
-        const pinBytes = new TextEncoder().encode(activePinString);
-        const mask = new Uint8Array(cred.rawId).slice(0, pinBytes.length);
-        const wrapped = pinBytes.map((b, i) => b ^ mask[i]);
-        vaultMeta.bioCredId = bufToB64(cred.rawId);
-        vaultMeta.bioWrappedPin = bufToB64(wrapped);
-        localStorage.setItem(VAULT_META_KEY, JSON.stringify(vaultMeta));
-        updateSecurityUI();
-        showToast('Fingerprint / Face unlock enabled');
-      } catch (_) {
-        showToast('Biometric setup canceled or unavailable');
-      }
-    }
-
-    async function unlockWithBiometric() {
-      if (!vaultMeta || !vaultMeta.bioCredId || !vaultMeta.bioWrappedPin) return;
-      try {
-        const challenge = crypto.getRandomValues(new Uint8Array(32));
-        const rawIdBuf = b64ToBuf(vaultMeta.bioCredId);
-        await navigator.credentials.get({
-          publicKey: {
-            challenge,
-            allowCredentials: [{ id: rawIdBuf, type: 'public-key' }],
-            userVerification: 'required',
-            timeout: 60000
-          }
-        });
-        const wrapped = new Uint8Array(b64ToBuf(vaultMeta.bioWrappedPin));
-        const mask = new Uint8Array(rawIdBuf).slice(0, wrapped.length);
-        const pinBytes = wrapped.map((b, i) => b ^ mask[i]);
-        const recoveredPin = new TextDecoder().decode(pinBytes);
-        const key = await deriveKeyFromPin(recoveredPin, vaultMeta.salt);
-        await decryptVaultState(key);
-        activeCryptoKey = key;
-        activePinString = recoveredPin;
-        completeUnlockUI();
-      } catch (_) {
-        document.getElementById('vaultError').textContent = 'Biometric check failed — enter PIN';
-      }
     }
 
     function updateSecurityUI() {
@@ -1798,7 +1799,7 @@
       const statusEl = document.getElementById('securityStatusText');
       if (enabled) {
         statusEl.style.color = 'var(--success)';
-        statusEl.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><span>AES-256 Vault Active ${vaultMeta.bioCredId ? '• Biometric Ready' : ''}</span>`;
+        statusEl.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><span>AES-256 PIN Vault Active</span>`;
       } else {
         statusEl.style.color = 'var(--danger)';
         statusEl.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><span>Vault Unprotected — Set a PIN below</span>`;
@@ -1811,7 +1812,7 @@
       if (inactivityTimer) clearTimeout(inactivityTimer);
       const ms = Number(appState.settings.autoLockMs ?? 0);
       if (ms > 0 && vaultMeta && vaultMeta.enabled && !isVaultLocked) {
-        inactivityTimer = setTimeout(lockVaultNow, ms);
+        inactivityTimer = setTimeout(() => lockVaultNow(true), ms);
       }
     }
     ['click', 'touchstart', 'keydown'].forEach(evt => {
@@ -1819,16 +1820,16 @@
     });
     document.addEventListener('visibilitychange', () => {
       if (document.hidden && vaultMeta && vaultMeta.enabled && Number(appState.settings.autoLockMs ?? 0) === 0) {
-        lockVaultNow();
+        lockVaultNow(true);
       }
     });
 
-    document.getElementById('btnLockNow').onclick = lockVaultNow;
+    document.getElementById('btnLockNow').onclick = () => lockVaultNow(false);
     document.getElementById('btnConfigurePin').onclick = () => {
-      closeSheet('settingsSheet');
+      haptic('medium');
+      closeSheet('settingsSheet', true);
       openVaultScreen('setup1');
     };
-    document.getElementById('btnEnableBio').onclick = enableBiometricUnlock;
 
     // ==========================================
     // APP LOGIC
@@ -1872,6 +1873,7 @@
     }
 
     function switchTab(tab) {
+      haptic('light');
       document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
       document.getElementById(`view-${tab}`).classList.add('active');
       document.querySelectorAll('.nav-item').forEach(btn => {
@@ -1926,6 +1928,7 @@
     }
 
     document.getElementById('btnToggleSearch').onclick = () => {
+      haptic('light');
       const wrap = document.getElementById('searchWrap');
       wrap.classList.toggle('open');
       if (wrap.classList.contains('open')) {
@@ -1964,8 +1967,9 @@
 
       rec.onerror = (e) => {
         if (e.error === 'not-allowed') {
+          haptic('error');
           showToast('Mic blocked — check site permissions or use Write instead');
-          stopRecordingUI();
+          stopRecordingUI(true);
         }
       };
 
@@ -1980,11 +1984,13 @@
 
     function startRecordingUI() {
       if (!SpeechRecognition) {
+        haptic('error');
         showToast('Speech API unavailable here — switching to Write mode');
         toggleWriteMode(true);
         return;
       }
       if (!recognition) recognition = initRecognition();
+      haptic('recStart');
       isRecording = true;
       document.getElementById('dialContainer').classList.add('recording');
       document.getElementById('recordHeading').innerHTML = 'Listening...';
@@ -1992,7 +1998,8 @@
       try { recognition.start(); } catch (_) {}
     }
 
-    function stopRecordingUI() {
+    function stopRecordingUI(silent = false) {
+      if (!silent && isRecording) haptic('recStop');
       isRecording = false;
       document.getElementById('dialContainer').classList.remove('recording');
       document.getElementById('recordHeading').innerHTML = 'Take a quiet<br>moment.';
@@ -2005,33 +2012,37 @@
     }
 
     document.getElementById('btnOpenRecord').onclick = () => {
+      haptic('medium');
       finalTranscript = '';
       document.getElementById('liveTranscriptBox').textContent = '';
       document.getElementById('liveTranscriptBox').classList.remove('visible');
       document.getElementById('btnSaveVoice').style.display = 'none';
       document.getElementById('manualTextarea').value = '';
-      toggleWriteMode(false);
+      toggleWriteMode(false, true);
       document.getElementById('recordModal').classList.add('open');
     };
 
     document.getElementById('btnCloseRecord').onclick = () => {
-      stopRecordingUI();
+      haptic('light');
+      stopRecordingUI(true);
       document.getElementById('recordModal').classList.remove('open');
     };
 
     document.getElementById('btnNextPrompt').onclick = () => {
+      haptic('light');
       promptIndex = (promptIndex + 1) % PROMPTS.length;
       document.getElementById('recordPrompt').textContent = PROMPTS[promptIndex];
     };
 
     document.getElementById('btnRecordToggle').onclick = () => {
-      if (isRecording) stopRecordingUI();
+      if (isRecording) stopRecordingUI(false);
       else startRecordingUI();
     };
 
-    function toggleWriteMode(forceManual) {
+    function toggleWriteMode(forceManual, silent = false) {
+      if (!silent) haptic('light');
       isManualMode = typeof forceManual === 'boolean' ? forceManual : !isManualMode;
-      if (isManualMode && isRecording) stopRecordingUI();
+      if (isManualMode && isRecording) stopRecordingUI(true);
       document.getElementById('voiceCaptureBlock').style.display = isManualMode ? 'none' : 'flex';
       document.getElementById('manualWriteArea').classList.toggle('open', isManualMode);
       document.getElementById('writeInsteadLabel').textContent = isManualMode ? 'Speak instead' : 'Write instead';
@@ -2105,6 +2116,7 @@ Return valid JSON matching the schema.`;
       const text = rawText.trim();
       if (!text) return;
 
+      haptic('medium');
       const btn = isManualMode ? document.getElementById('btnSaveManual') : document.getElementById('btnSaveVoice');
       const prevLabel = btn.textContent;
       btn.textContent = 'Encrypting & saving...';
@@ -2131,6 +2143,7 @@ Return valid JSON matching the schema.`;
       btn.disabled = false;
       document.getElementById('recordModal').classList.remove('open');
       renderJournal();
+      haptic('success');
       showToast('Encrypted & saved');
     }
 
@@ -2140,6 +2153,7 @@ Return valid JSON matching the schema.`;
     function openEntryDetail(id) {
       const entry = appState.entries.find(e => e.id === id);
       if (!entry) return;
+      haptic('light');
       activeDetailId = id;
       const d = new Date(entry.createdAt);
       document.getElementById('detailDate').textContent = d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' });
@@ -2153,15 +2167,17 @@ Return valid JSON matching the schema.`;
 
     document.getElementById('btnDeleteEntry').onclick = async () => {
       if (!activeDetailId) return;
+      haptic('error');
       appState.entries = appState.entries.filter(e => e.id !== activeDetailId);
       await encryptVaultState();
-      closeSheet('detailSheet');
+      closeSheet('detailSheet', true);
       renderJournal();
       renderCalendar();
       showToast('Entry deleted');
     };
 
-    function closeSheet(id) {
+    function closeSheet(id, silent = false) {
+      if (!silent) haptic('light');
       document.getElementById(id).classList.remove('open');
     }
 
@@ -2210,6 +2226,7 @@ Return valid JSON matching the schema.`;
     }
 
     function selectCalDay(key) {
+      haptic('light');
       selectedDateStr = key;
       renderCalendar();
     }
@@ -2242,8 +2259,8 @@ Return valid JSON matching the schema.`;
       `).join('');
     }
 
-    document.getElementById('calPrev').onclick = () => { calDate.setMonth(calDate.getMonth() - 1); renderCalendar(); };
-    document.getElementById('calNext').onclick = () => { calDate.setMonth(calDate.getMonth() + 1); renderCalendar(); };
+    document.getElementById('calPrev').onclick = () => { haptic('light'); calDate.setMonth(calDate.getMonth() - 1); renderCalendar(); };
+    document.getElementById('calNext').onclick = () => { haptic('light'); calDate.setMonth(calDate.getMonth() + 1); renderCalendar(); };
 
     function renderChat() {
       const hero = document.getElementById('chatEmptyHero');
@@ -2260,6 +2277,7 @@ Return valid JSON matching the schema.`;
     async function sendChatPrompt(text) {
       const q = (text || document.getElementById('chatInput').value).trim();
       if (!q) return;
+      haptic('light');
       document.getElementById('chatInput').value = '';
 
       appState.chat.push({ role: 'user', text: q });
@@ -2291,8 +2309,10 @@ Return valid JSON matching the schema.`;
         const data = await res.json();
         const answer = data.candidates?.[0]?.content?.parts?.[0]?.text || "I couldn't read a response right now.";
         appState.chat[appState.chat.length - 1] = { role: 'ai', text: answer };
+        haptic('success');
       } catch (_) {
         appState.chat[appState.chat.length - 1] = { role: 'ai', text: 'Network or API key error while reading your entries.' };
+        haptic('error');
       }
       await encryptVaultState();
       renderChat();
@@ -2301,6 +2321,7 @@ Return valid JSON matching the schema.`;
     document.getElementById('btnSendChat').onclick = () => sendChatPrompt();
     document.getElementById('chatInput').onkeydown = (e) => { if (e.key === 'Enter') sendChatPrompt(); };
     document.getElementById('btnClearChat').onclick = async () => {
+      haptic('medium');
       appState.chat = [];
       await encryptVaultState();
       renderChat();
@@ -2322,7 +2343,7 @@ Return valid JSON matching the schema.`;
         const pct = Math.max(12, Math.min(100, (e.moodScore || 7) * 10));
         const label = new Date(e.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
         return `
-          <div class="mood-bar-col">
+          <div class="mood-bar-col" onclick="haptic('light')">
             <div class="mood-bar-fill" style="height:${pct}%" title="${escapeHtml(e.moodLabel)} (${e.moodScore}/10)"></div>
             <div class="mood-bar-label">${label}</div>
           </div>
@@ -2341,9 +2362,11 @@ Return valid JSON matching the schema.`;
     document.getElementById('btnGenerateReflection').onclick = async () => {
       const apiKey = (appState.settings.apiKey || '').trim();
       if (!apiKey) {
+        haptic('error');
         showToast('Add your Gemini API key in Settings first');
         return;
       }
+      haptic('medium');
       const btn = document.getElementById('btnGenerateReflection');
       btn.textContent = 'Synthesizing your chapter...';
       btn.disabled = true;
@@ -2365,7 +2388,9 @@ Return valid JSON matching the schema.`;
         };
         await encryptVaultState();
         renderInsights();
+        haptic('success');
       } catch (_) {
+        haptic('error');
         showToast('Error generating reflection');
       }
       btn.textContent = 'Refresh Life Reflection';
@@ -2374,14 +2399,24 @@ Return valid JSON matching the schema.`;
 
     // Settings & Encrypted Backup
     document.getElementById('btnOpenSettings').onclick = () => {
+      haptic('light');
       document.getElementById('apiKeyInput').value = appState.settings.apiKey || '';
       document.getElementById('darkModeToggle').checked = appState.settings.theme === 'dark';
+      document.getElementById('hapticsToggle').checked = appState.settings.haptics !== false;
       document.getElementById('autoLockSelect').value = String(appState.settings.autoLockMs ?? 0);
       updateSecurityUI();
+      renderNightlyBackupList();
       document.getElementById('settingsSheet').classList.add('open');
     };
 
+    document.getElementById('hapticsToggle').onchange = async (e) => {
+      appState.settings.haptics = e.target.checked;
+      if (e.target.checked) haptic('medium');
+      await encryptVaultState();
+    };
+
     document.getElementById('darkModeToggle').onchange = async (e) => {
+      haptic('light');
       appState.settings.theme = e.target.checked ? 'dark' : 'light';
       applyTheme(appState.settings.theme);
       await encryptVaultState();
@@ -2390,16 +2425,18 @@ Return valid JSON matching the schema.`;
     document.getElementById('btnSaveSettings').onclick = async () => {
       appState.settings.apiKey = document.getElementById('apiKeyInput').value.trim();
       appState.settings.theme = document.getElementById('darkModeToggle').checked ? 'dark' : 'light';
+      appState.settings.haptics = document.getElementById('hapticsToggle').checked;
       appState.settings.autoLockMs = Number(document.getElementById('autoLockSelect').value);
       await encryptVaultState();
       applyTheme(appState.settings.theme);
       resetInactivityTimer();
-      closeSheet('settingsSheet');
+      closeSheet('settingsSheet', true);
+      haptic('success');
       showToast('Settings saved & encrypted');
     };
 
     document.getElementById('btnExportBackup').onclick = () => {
-      // Exports raw encrypted vault envelope if vault is enabled, or JSON if unlocked
+      haptic('medium');
       const payload = (vaultMeta && vaultMeta.enabled && localStorage.getItem(VAULT_BLOB_KEY))
         ? {
             encryptedVault: true,
@@ -2421,7 +2458,10 @@ Return valid JSON matching the schema.`;
       URL.revokeObjectURL(url);
     };
 
-    document.getElementById('btnImportTrigger').onclick = () => document.getElementById('importFileInput').click();
+    document.getElementById('btnImportTrigger').onclick = () => {
+      haptic('light');
+      document.getElementById('importFileInput').click();
+    };
     document.getElementById('importFileInput').onchange = (e) => {
       const file = e.target.files[0];
       if (!file) return;
@@ -2433,17 +2473,20 @@ Return valid JSON matching the schema.`;
             localStorage.setItem(VAULT_META_KEY, JSON.stringify({ enabled: true, salt: parsed.meta.salt }));
             localStorage.setItem(VAULT_BLOB_KEY, JSON.stringify(parsed.blob));
             vaultMeta = JSON.parse(localStorage.getItem(VAULT_META_KEY));
-            closeSheet('settingsSheet');
+            closeSheet('settingsSheet', true);
             openVaultScreen('unlock');
+            haptic('success');
             showToast('Encrypted vault imported — enter PIN to unlock');
           } else if (Array.isArray(parsed.entries)) {
             appState.entries = parsed.entries;
             await encryptVaultState();
             renderJournal();
+            haptic('success');
             showToast(`Imported ${appState.entries.length} entries`);
-            closeSheet('settingsSheet');
+            closeSheet('settingsSheet', true);
           }
         } catch (_) {
+          haptic('error');
           showToast('Invalid JSON backup file');
         }
       };
@@ -2492,10 +2535,12 @@ Return valid JSON matching the schema.`;
       resetTimerId = setInterval(() => {
         remaining--;
         if (remaining > 0) {
+          haptic('tick');
           okBtn.textContent = `OK (${remaining}s)`;
         } else {
           clearInterval(resetTimerId);
           resetTimerId = null;
+          haptic('medium');
           okBtn.disabled = false;
           okBtn.textContent = idx === 2 ? 'Wipe & Reset' : 'OK';
         }
@@ -2503,6 +2548,7 @@ Return valid JSON matching the schema.`;
     }
 
     function closeResetDialog() {
+      haptic('light');
       if (resetTimerId) {
         clearInterval(resetTimerId);
         resetTimerId = null;
@@ -2511,6 +2557,7 @@ Return valid JSON matching the schema.`;
     }
 
     document.getElementById('btnResetTrigger').onclick = () => {
+      haptic('error');
       document.getElementById('resetDialog').classList.add('open');
       startResetStep(0);
     };
@@ -2519,14 +2566,16 @@ Return valid JSON matching the schema.`;
 
     document.getElementById('btnResetOk').onclick = async () => {
       if (resetStepIdx < 2) {
+        haptic('medium');
         startResetStep(resetStepIdx + 1);
       } else {
+        haptic('error');
         closeResetDialog();
         appState.entries = [];
         appState.reflection = null;
         appState.chat = [];
         await encryptVaultState();
-        closeSheet('settingsSheet');
+        closeSheet('settingsSheet', true);
         renderJournal();
         renderCalendar();
         renderChat();
@@ -2537,11 +2586,191 @@ Return valid JSON matching the schema.`;
     };
 
     // ==========================================
+    // 14-DAY NIGHTLY AUTO-BACKUP ENGINE (INDEXEDDB)
+    // ==========================================
+    const IDB_NAME = 'VoiceJournalSnapshotsDB';
+    const IDB_STORE = 'nightly_backups';
+    const RETENTION_DAYS = 14;
+
+    function openBackupDB() {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open(IDB_NAME, 1);
+        req.onupgradeneeded = (e) => {
+          const db = e.target.result;
+          if (!db.objectStoreNames.contains(IDB_STORE)) {
+            db.createObjectStore(IDB_STORE, { keyPath: 'dateKey' });
+          }
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    function buildBackupEnvelope() {
+      if (vaultMeta && vaultMeta.enabled && localStorage.getItem(VAULT_BLOB_KEY)) {
+        return {
+          encryptedVault: true,
+          meta: { salt: vaultMeta.salt },
+          blob: JSON.parse(localStorage.getItem(VAULT_BLOB_KEY)),
+          entryCount: appState.entries.length,
+          exportedAt: new Date().toISOString()
+        };
+      }
+      return {
+        encryptedVault: false,
+        entries: appState.entries,
+        entryCount: appState.entries.length,
+        exportedAt: new Date().toISOString()
+      };
+    }
+
+    async function runNightlySnapshot(forceToast = false) {
+      try {
+        const db = await openBackupDB();
+        const todayKey = toDateKey(new Date());
+        const envelope = buildBackupEnvelope();
+
+        await new Promise((resolve, reject) => {
+          const tx = db.transaction(IDB_STORE, 'readwrite');
+          const store = tx.objectStore(IDB_STORE);
+          store.put({
+            dateKey: todayKey,
+            savedAt: new Date().toISOString(),
+            entryCount: appState.entries.length,
+            encrypted: Boolean(envelope.encryptedVault),
+            payload: envelope
+          });
+
+          const cutoff = new Date();
+          cutoff.setDate(cutoff.getDate() - RETENTION_DAYS);
+          const cutoffKey = toDateKey(cutoff);
+
+          const cursorReq = store.openCursor();
+          cursorReq.onsuccess = (ev) => {
+            const cursor = ev.target.result;
+            if (cursor) {
+              if (cursor.value.dateKey < cutoffKey) {
+                cursor.delete();
+              }
+              cursor.continue();
+            }
+          };
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+        });
+
+        if (forceToast) {
+          haptic('success');
+          showToast('Snapshot saved to 14-day vault');
+        }
+        renderNightlyBackupList();
+      } catch (_) {}
+    }
+
+    async function getAllNightlySnapshots() {
+      try {
+        const db = await openBackupDB();
+        return await new Promise((resolve) => {
+          const tx = db.transaction(IDB_STORE, 'readonly');
+          const req = tx.objectStore(IDB_STORE).getAll();
+          req.onsuccess = () => resolve((req.result || []).sort((a, b) => b.dateKey.localeCompare(a.dateKey)));
+          req.onerror = () => resolve([]);
+        });
+      } catch (_) {
+        return [];
+      }
+    }
+
+    async function renderNightlyBackupList() {
+      const container = document.getElementById('nightlyBackupList');
+      if (!container) return;
+      const snaps = await getAllNightlySnapshots();
+      if (snaps.length === 0) {
+        container.innerHTML = `<div style="font-size:12px; color:var(--text-subtle); padding:6px 0;">No snapshots yet — tap Backup Now.</div>`;
+        return;
+      }
+      container.innerHTML = snaps.map(s => {
+        const timeStr = new Date(s.savedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+        return `
+          <div class="backup-row">
+            <div>
+              <div style="font-weight:600;">${s.dateKey} <span style="color:var(--text-muted); font-weight:400;">(${timeStr})</span></div>
+              <div style="font-size:11px; color:var(--text-muted);">${s.entryCount} entries • ${s.encrypted ? 'AES-256' : 'JSON'}</div>
+            </div>
+            <div style="display:flex; gap:6px;">
+              <button class="backup-mini-btn" onclick="downloadSnapshot('${s.dateKey}')">File</button>
+              <button class="backup-mini-btn" onclick="restoreSnapshot('${s.dateKey}')">Restore</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function downloadSnapshot(dateKey) {
+      haptic('medium');
+      const snaps = await getAllNightlySnapshots();
+      const target = snaps.find(s => s.dateKey === dateKey);
+      if (!target) return;
+      const blob = new Blob([JSON.stringify(target.payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `voice-journal-nightly-${dateKey}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    async function restoreSnapshot(dateKey) {
+      haptic('medium');
+      const snaps = await getAllNightlySnapshots();
+      const target = snaps.find(s => s.dateKey === dateKey);
+      if (!target || !target.payload) return;
+      const parsed = target.payload;
+      if (parsed.encryptedVault && parsed.meta && parsed.blob) {
+        localStorage.setItem(VAULT_META_KEY, JSON.stringify({ enabled: true, salt: parsed.meta.salt }));
+        localStorage.setItem(VAULT_BLOB_KEY, JSON.stringify(parsed.blob));
+        vaultMeta = JSON.parse(localStorage.getItem(VAULT_META_KEY));
+        closeSheet('settingsSheet', true);
+        openVaultScreen('unlock');
+        haptic('success');
+        showToast(`Restored ${dateKey} — enter PIN to unlock`);
+      } else if (Array.isArray(parsed.entries)) {
+        appState.entries = parsed.entries;
+        await encryptVaultState();
+        renderJournal();
+        renderCalendar();
+        renderInsights();
+        closeSheet('settingsSheet', true);
+        haptic('success');
+        showToast(`Restored ${parsed.entries.length} entries from ${dateKey}`);
+      }
+    }
+
+    function scheduleMidnightBackup() {
+      const now = new Date();
+      const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 1, 0);
+      const msUntilMidnight = nextMidnight - now;
+      setTimeout(async () => {
+        if (!isVaultLocked) await runNightlySnapshot(false);
+        scheduleMidnightBackup();
+      }, msUntilMidnight);
+    }
+    scheduleMidnightBackup();
+
+    document.getElementById('btnSnapshotNow').onclick = () => runNightlySnapshot(true);
+
+    // ==========================================
     // BOOTSTRAP VAULT ON LOAD
     // ==========================================
     (function bootstrap() {
+      // Strip any legacy biometric fields if upgrading from an earlier build
+      if (vaultMeta && (vaultMeta.bioCredId || vaultMeta.bioWrappedPin)) {
+        delete vaultMeta.bioCredId;
+        delete vaultMeta.bioWrappedPin;
+        localStorage.setItem(VAULT_META_KEY, JSON.stringify(vaultMeta));
+      }
+
       if (!vaultMeta) {
-        // First time user: prompt to create a 4-digit AES-256 vault PIN
         openVaultScreen('setup1');
       } else if (vaultMeta.enabled) {
         openVaultScreen('unlock');

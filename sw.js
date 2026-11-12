@@ -1,8 +1,8 @@
-const CACHE_NAME = 'voice-journal-v5';
+const CACHE_NAME = 'voice-journal-v8';
 const ASSETS = [
   './',
   './index.html',
-  './manifest.json',
+  './manifest.json?v=8',
   './icon-192.png',
   './icon-512.png'
 ];
