@@ -76,7 +76,6 @@
       padding: calc(env(safe-area-inset-top, 16px) + 12px) 20px calc(env(safe-area-inset-bottom, 20px) + 104px);
     }
 
-    /* Top Header */
     .top-bar {
       display: flex;
       align-items: center;
@@ -113,7 +112,6 @@
       transform: scale(0.94);
     }
 
-    /* Views */
     .view {
       display: none;
       flex: 1;
@@ -130,7 +128,6 @@
       to { opacity: 1; transform: translateY(0); }
     }
 
-    /* Empty State */
     .empty-state {
       flex: 1;
       display: flex;
@@ -159,7 +156,6 @@
       max-width: 290px;
     }
 
-    /* Search Bar */
     .search-wrap {
       display: none;
       margin-bottom: 16px;
@@ -181,7 +177,6 @@
       outline: none;
     }
 
-    /* Journal Cards */
     .entries-list {
       display: flex;
       flex-direction: column;
@@ -256,7 +251,6 @@
       color: var(--text-muted);
     }
 
-    /* Calendar View */
     .stats-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -362,7 +356,6 @@
       margin-bottom: 10px;
     }
 
-    /* Chat View */
     .chat-hero {
       text-align: center;
       padding: 18px 8px 24px;
@@ -471,7 +464,6 @@
       flex-shrink: 0;
     }
 
-    /* Insights View */
     .insight-card {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -557,7 +549,6 @@
       cursor: pointer;
     }
 
-    /* Floating Bottom Navigation Pill */
     .bottom-nav-wrap {
       position: fixed;
       bottom: calc(env(safe-area-inset-bottom, 14px) + 12px);
@@ -630,7 +621,6 @@
       transform: scale(0.92);
     }
 
-    /* Fullscreen Record Modal */
     .modal-overlay {
       position: fixed;
       inset: 0;
@@ -678,7 +668,6 @@
       margin-bottom: 34px;
     }
 
-    /* Circular Dial */
     .dial-container {
       position: relative;
       width: 220px;
@@ -808,7 +797,6 @@
       outline: none;
     }
 
-    /* Sheet / Detail & Settings Modals */
     .sheet-overlay {
       position: fixed;
       inset: 0;
@@ -1018,7 +1006,7 @@
 
         <div class="insight-card">
           <h3>Life Reflection</h3>
-          <div class="insight-sub" id="reflectionUpdatedAt">A synthesis of your recent thoughts & patterns</div>
+          <div class="insight-sub" id="reflectionUpdatedAt">A synthesis of your recent thoughts &amp; patterns</div>
           <div class="reflection-body" id="reflectionText">Tap below to generate a thoughtful reflection across your entries.</div>
           <button class="primary-btn" id="btnGenerateReflection">Generate Life Reflection</button>
         </div>
@@ -1162,7 +1150,6 @@
   </div>
 
   <script>
-    // Register Service Worker
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -1213,7 +1200,6 @@
       setTimeout(() => t.classList.remove('show'), 2400);
     }
 
-    // Theme Setup
     function applyTheme(theme) {
       document.documentElement.setAttribute('data-theme', theme);
       document.getElementById('darkModeToggle').checked = theme === 'dark';
@@ -1221,7 +1207,6 @@
     }
     applyTheme(settings.theme || 'light');
 
-    // Navigation
     function switchTab(tab) {
       document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
       document.getElementById(`view-${tab}`).classList.add('active');
@@ -1233,7 +1218,6 @@
       if (tab === 'chat') renderChat();
     }
 
-    // Render Journal Feed
     function renderJournal(filter = '') {
       const list = document.getElementById('journalList');
       const empty = document.getElementById('journalEmpty');
@@ -1277,7 +1261,6 @@
       }[m]));
     }
 
-    // Search Toggle
     document.getElementById('btnToggleSearch').onclick = () => {
       const wrap = document.getElementById('searchWrap');
       wrap.classList.toggle('open');
@@ -1290,7 +1273,6 @@
     };
     document.getElementById('searchInput').oninput = (e) => renderJournal(e.target.value);
 
-    // Speech Recognition Setup
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
     function initRecognition() {
@@ -1393,7 +1375,6 @@
 
     document.getElementById('btnWriteInstead').onclick = () => toggleWriteMode();
 
-    // Gemini Formatting (Strictly preserving filler words: um, uh, you know, like)
     async function processEntryWithAI(rawText) {
       const apiKey = (settings.apiKey || '').trim();
       if (!apiKey) {
@@ -1406,8 +1387,7 @@ ONLY add punctuation (periods, commas, ellipses "...", em-dashes "—") and para
 Return valid JSON matching the schema.`;
 
       const payload = {
-        contents: [{ parts: [{ text: `Transcript:
-${rawText}` }] }],
+        contents: [{ parts: [{ text: "Transcript:\n" + rawText }] }],
         systemInstruction: { parts: [{ text: systemInstruction }] },
         generationConfig: {
           responseMimeType: "application/json",
@@ -1493,7 +1473,6 @@ ${rawText}` }] }],
     document.getElementById('btnSaveVoice').onclick = () => handleSaveEntry(finalTranscript);
     document.getElementById('btnSaveManual').onclick = () => handleSaveEntry(document.getElementById('manualTextarea').value);
 
-    // Entry Detail Sheet
     function openEntryDetail(id) {
       const entry = entries.find(e => e.id === id);
       if (!entry) return;
@@ -1522,7 +1501,6 @@ ${rawText}` }] }],
       document.getElementById(id).classList.remove('open');
     }
 
-    // Calendar Logic
     function computeStreaks() {
       const uniqueDays = [...new Set(entries.map(e => e.dateKey))].sort().reverse();
       document.getElementById('statDays').textContent = uniqueDays.length;
@@ -1603,7 +1581,6 @@ ${rawText}` }] }],
     document.getElementById('calPrev').onclick = () => { calDate.setMonth(calDate.getMonth() - 1); renderCalendar(); };
     document.getElementById('calNext').onclick = () => { calDate.setMonth(calDate.getMonth() + 1); renderCalendar(); };
 
-    // Chat With Past Self
     function renderChat() {
       const hero = document.getElementById('chatEmptyHero');
       const list = document.getElementById('chatMessages');
@@ -1638,14 +1615,8 @@ ${rawText}` }] }],
       chatHistory.push({ role: 'ai', text: 'Reflecting on your entries...' });
       renderChat();
 
-      const context = entries.slice(0, 25).map(e => `[${e.dateKey}] (${e.moodLabel} ${e.moodScore}/10) ${e.title}: ${e.formatted}`).join('
-
-');
-      const prompt = `You are a thoughtful, grounded reflection companion helping the user explore their own voice journal entries. Answer warmly and concisely based ONLY on these entries:
-
-${context}
-
-User question: ${q}`;
+      const context = entries.slice(0, 25).map(e => `[${e.dateKey}] (${e.moodLabel} ${e.moodScore}/10) ${e.title}: ${e.formatted}`).join("\n\n");
+      const prompt = "You are a thoughtful, grounded reflection companion helping the user explore their own voice journal entries. Answer warmly and concisely based ONLY on these entries:\n\n" + context + "\n\nUser question: " + q;
 
       try {
         const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`, {
@@ -1671,7 +1642,6 @@ User question: ${q}`;
       renderChat();
     };
 
-    // Insights & Life Reflection
     function renderInsights() {
       const empty = document.getElementById('insightsEmpty');
       const content = document.getElementById('insightsContent');
@@ -1689,7 +1659,7 @@ User question: ${q}`;
         const label = new Date(e.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
         return `
           <div class="mood-bar-col">
-            <div class="mood-bar-fill" style="height:${pct}%" title="${e.moodLabel} (${e.moodScore}/10)"></div>
+            <div class="mood-bar-fill" style="height:${pct}%" title="${escapeHtml(e.moodLabel)} (${e.moodScore}/10)"></div>
             <div class="mood-bar-label">${label}</div>
           </div>
         `;
@@ -1711,12 +1681,8 @@ User question: ${q}`;
       btn.textContent = 'Synthesizing your chapter...';
       btn.disabled = true;
 
-      const context = entries.slice(0, 20).map(e => `[${e.dateKey}] (${e.moodLabel}, ${e.moodScore}/10) ${e.title}: ${e.formatted}`).join('
-
-');
-      const prompt = `Read these recent voice journal entries and write a warm, insightful, grounded second-person ("You...") reflection on the user's current life chapter. Highlight recurring emotional patterns, quiet wins, and one gentle question to sit with. Keep it under 180 words.
-
-${context}`;
+      const context = entries.slice(0, 20).map(e => `[${e.dateKey}] (${e.moodLabel}, ${e.moodScore}/10) ${e.title}: ${e.formatted}`).join("\n\n");
+      const prompt = "Read these recent voice journal entries and write a warm, insightful, grounded second-person (\"You...\") reflection on the user's current life chapter. Highlight recurring emotional patterns, quiet wins, and one gentle question to sit with. Keep it under 180 words.\n\n" + context;
 
       try {
         const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`, {
@@ -1739,7 +1705,6 @@ ${context}`;
       btn.disabled = false;
     };
 
-    // Settings & Backup
     document.getElementById('btnOpenSettings').onclick = () => {
       document.getElementById('apiKeyInput').value = settings.apiKey || '';
       document.getElementById('darkModeToggle').checked = settings.theme === 'dark';
@@ -1793,7 +1758,6 @@ ${context}`;
       reader.readAsText(file);
     };
 
-    // Initial Render
     renderJournal();
   </script>
 </body>
