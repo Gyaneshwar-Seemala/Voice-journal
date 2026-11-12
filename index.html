@@ -24,9 +24,9 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>Voice Journal</title>
-  <link rel="manifest" href="./manifest.json?v=11" />
-  <link rel="icon" href="./icon-192.png?v=11" />
-  <link rel="apple-touch-icon" href="./icon-192.png?v=11" />
+  <link rel="manifest" href="./manifest.json?v=12" />
+  <link rel="icon" href="./icon-192.png?v=12" />
+  <link rel="apple-touch-icon" href="./icon-192.png?v=12" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -1063,6 +1063,56 @@
       cursor: pointer;
     }
 
+    @keyframes spinIcon {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .is-spinning svg {
+      animation: spinIcon 0.9s linear infinite;
+    }
+
+    .live-progress-wrap {
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      margin-bottom: 14px;
+      width: 100%;
+    }
+
+    .live-progress-wrap.active {
+      display: flex;
+    }
+
+    .live-progress-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .live-progress-track {
+      width: 100%;
+      height: 5px;
+      border-radius: 999px;
+      background: var(--surface-alt);
+      overflow: hidden;
+    }
+
+    .live-progress-fill {
+      height: 100%;
+      width: 15%;
+      background: var(--accent);
+      border-radius: 999px;
+      transition: width 0.35s ease;
+    }
+
     /* 3-Step Reset Confirmation Dialog */
     .dialog-overlay {
       position: fixed;
@@ -1344,6 +1394,15 @@
           <h3>Life Reflection</h3>
           <div class="insight-sub" id="reflectionUpdatedAt">A synthesis of your recent thoughts &amp; patterns</div>
           <div class="reflection-body" id="reflectionText">Tap below to generate a thoughtful reflection across your entries.</div>
+          <div class="live-progress-wrap" id="insightsProgressWrap" style="margin-top:14px; margin-bottom:0;">
+            <div class="live-progress-row">
+              <span id="insightsProgressLabel">Reading your entries...</span>
+              <span id="insightsProgressPct">15%</span>
+            </div>
+            <div class="live-progress-track">
+              <div class="live-progress-fill" id="insightsProgressFill"></div>
+            </div>
+          </div>
           <button class="primary-btn" id="btnGenerateReflection">Generate Life Reflection</button>
         </div>
       </div>
@@ -1409,11 +1468,29 @@
         </div>
 
         <div class="live-transcript-box" id="liveTranscriptBox"></div>
+        <div class="live-progress-wrap" id="recordProgressWrap" style="max-width:340px; margin-top:14px; margin-bottom:0;">
+          <div class="live-progress-row">
+            <span id="recordProgressLabel">Formatting entry...</span>
+            <span id="recordProgressPct">15%</span>
+          </div>
+          <div class="live-progress-track">
+            <div class="live-progress-fill" id="recordProgressFill"></div>
+          </div>
+        </div>
         <button class="primary-btn" id="btnSaveVoice" style="display:none; max-width:260px;">Finish &amp; Format Entry</button>
       </div>
 
       <div class="manual-write-area" id="manualWriteArea">
         <textarea class="manual-textarea" id="manualTextarea" placeholder="Write freely... keep your ums, pauses, and raw thoughts intact."></textarea>
+        <div class="live-progress-wrap" id="manualProgressWrap" style="margin-bottom:0;">
+          <div class="live-progress-row">
+            <span id="manualProgressLabel">Formatting entry...</span>
+            <span id="manualProgressPct">15%</span>
+          </div>
+          <div class="live-progress-track">
+            <div class="live-progress-fill" id="manualProgressFill"></div>
+          </div>
+        </div>
         <button class="primary-btn" id="btnSaveManual">Save &amp; Format Entry</button>
       </div>
     </div>
@@ -1439,6 +1516,15 @@
           <button class="icon-circle-btn" onclick="closeSheet('detailSheet')" aria-label="Close">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
+        </div>
+      </div>
+      <div class="live-progress-wrap" id="detailProgressWrap">
+        <div class="live-progress-row">
+          <span id="detailProgressLabel">Formatting journal entry...</span>
+          <span id="detailProgressPct">15%</span>
+        </div>
+        <div class="live-progress-track">
+          <div class="live-progress-fill" id="detailProgressFill"></div>
         </div>
       </div>
       <div id="detailDate" style="font-size:12.5px; color:var(--text-muted); margin-bottom:6px;"></div>
@@ -2070,7 +2156,52 @@
 
     document.getElementById('btnWriteInstead').onclick = () => toggleWriteMode();
 
-    async function callGeminiStructured(apiKey, rawText) {
+    // Real-time progress bar controller
+    function createProgressTracker(prefix) {
+      const wrap = document.getElementById(prefix + 'ProgressWrap');
+      const label = document.getElementById(prefix + 'ProgressLabel');
+      const pctEl = document.getElementById(prefix + 'ProgressPct');
+      const fill = document.getElementById(prefix + 'ProgressFill');
+      let currentPct = 10;
+      let timer = null;
+
+      function set(pct, text) {
+        currentPct = pct;
+        if (text) label.textContent = text;
+        pctEl.textContent = Math.round(currentPct) + '%';
+        fill.style.width = Math.round(currentPct) + '%';
+      }
+
+      wrap.classList.add('active');
+      set(12, 'Preparing transcript...');
+
+      timer = setInterval(() => {
+        if (currentPct < 88) {
+          const step = currentPct < 50 ? 6 : (currentPct < 75 ? 3 : 1.5);
+          set(Math.min(88, currentPct + step));
+        }
+      }, 350);
+
+      return {
+        update(pct, text) {
+          set(Math.max(currentPct, pct), text);
+        },
+        done(text = 'Done!') {
+          clearInterval(timer);
+          set(100, text);
+          setTimeout(() => {
+            wrap.classList.remove('active');
+            set(12, '');
+          }, 650);
+        },
+        fail() {
+          clearInterval(timer);
+          wrap.classList.remove('active');
+        }
+      };
+    }
+
+    async function callGeminiStructured(apiKey, rawText, onStatus) {
       const systemInstruction = `You are a thoughtful personal journal formatter.
 Your job is to structure raw spoken or typed journal reflections into a readable, authentic journal entry while keeping the author's exact voice.
 
@@ -2106,6 +2237,7 @@ STRICT RULES:
       let lastErr = 'API error';
 
       for (const model of models) {
+        if (onStatus) onStatus(32, `Structuring with ${model}...`);
         try {
           const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`, {
             method: 'POST',
@@ -2128,14 +2260,17 @@ STRICT RULES:
       throw new Error(lastErr);
     }
 
-    async function processEntryWithAI(rawText) {
+    async function processEntryWithAI(rawText, onStatus) {
       const apiKey = (appState.settings.apiKey || '').trim();
       if (!apiKey) {
+        if (onStatus) onStatus(55, 'Formatting locally (no API key set)...');
+        await new Promise(r => setTimeout(r, 320));
         return localHumanFormat(rawText);
       }
       try {
-        return await callGeminiStructured(apiKey, rawText);
+        return await callGeminiStructured(apiKey, rawText, onStatus);
       } catch (err) {
+        if (onStatus) onStatus(65, 'API unavailable — formatting locally...');
         showToast('AI fallback: ' + (err.message || 'Check API key').slice(0, 42));
         return localHumanFormat(rawText);
       }
@@ -2190,10 +2325,12 @@ STRICT RULES:
       haptic('medium');
       const btn = isManualMode ? document.getElementById('btnSaveManual') : document.getElementById('btnSaveVoice');
       const prevLabel = btn.textContent;
-      btn.textContent = 'Encrypting & saving...';
+      btn.textContent = 'Formatting...';
       btn.disabled = true;
+      const tracker = createProgressTracker(isManualMode ? 'manual' : 'record');
 
-      const result = await processEntryWithAI(text);
+      const result = await processEntryWithAI(text, (pct, msg) => tracker.update(pct, msg));
+      tracker.update(92, 'Encrypting into AES-256 vault...');
       const now = new Date();
       const newEntry = {
         id: String(Date.now()),
@@ -2209,10 +2346,11 @@ STRICT RULES:
 
       appState.entries.unshift(newEntry);
       await encryptVaultState();
+      tracker.done('Saved to vault');
 
       btn.textContent = prevLabel;
       btn.disabled = false;
-      document.getElementById('recordModal').classList.remove('open');
+      setTimeout(() => document.getElementById('recordModal').classList.remove('open'), 300);
       renderJournal();
       haptic('success');
       showToast('Encrypted & saved');
@@ -2242,11 +2380,12 @@ STRICT RULES:
       if (!entry) return;
       haptic('medium');
       const btn = document.getElementById('btnReformatEntry');
-      btn.style.opacity = '0.5';
+      btn.classList.add('is-spinning');
       btn.disabled = true;
-      showToast('Re-formatting entry...');
+      const tracker = createProgressTracker('detail');
 
-      const result = await processEntryWithAI(entry.raw || entry.formatted);
+      const result = await processEntryWithAI(entry.raw || entry.formatted, (pct, msg) => tracker.update(pct, msg));
+      tracker.update(92, 'Encrypting updated entry...');
       entry.title = result.title || entry.title;
       entry.formatted = result.formatted || entry.formatted;
       entry.moodScore = result.moodScore || entry.moodScore;
@@ -2254,7 +2393,8 @@ STRICT RULES:
       entry.tags = result.tags || entry.tags;
 
       await encryptVaultState();
-      btn.style.opacity = '1';
+      tracker.done('Formatting complete');
+      btn.classList.remove('is-spinning');
       btn.disabled = false;
       openEntryDetail(entry.id);
       renderJournal();
@@ -2466,13 +2606,16 @@ STRICT RULES:
       }
       haptic('medium');
       const btn = document.getElementById('btnGenerateReflection');
-      btn.textContent = 'Synthesizing your chapter...';
+      btn.textContent = 'Synthesizing...';
       btn.disabled = true;
+      const tracker = createProgressTracker('insights');
+      tracker.update(28, 'Analyzing emotional patterns across entries...');
 
       const context = appState.entries.slice(0, 20).map(e => `[${e.dateKey}] (${e.moodLabel}, ${e.moodScore}/10) ${e.title}: ${e.formatted}`).join("\n\n");
       const prompt = "Read these recent voice journal entries and write a warm, insightful, grounded second-person (\"You...\") reflection on the user's current life chapter. Highlight recurring emotional patterns, quiet wins, and one gentle question to sit with. Keep it under 180 words.\n\n" + context;
 
       try {
+        tracker.update(52, 'Writing your life chapter synthesis...');
         const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -2480,14 +2623,17 @@ STRICT RULES:
         });
         const data = await res.json();
         const text = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Unable to generate reflection right now.';
+        tracker.update(90, 'Encrypting reflection...');
         appState.reflection = {
           text,
           updatedAt: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
         };
         await encryptVaultState();
+        tracker.done('Reflection ready');
         renderInsights();
         haptic('success');
       } catch (_) {
+        tracker.fail();
         haptic('error');
         showToast('Error generating reflection');
       }

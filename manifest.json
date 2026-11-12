@@ -2,7 +2,7 @@
   "id": "yaneshwar-voice-journal-app-v1",
   "name": "Voice Journal",
   "short_name": "Journal",
-  "description": "Encrypted, human-first voice journal with AI formatting, tactile haptics, 14-day nightly backups, mood trends, and life reflections.",
+  "description": "Encrypted, human-first voice journal with AI formatting, real-time progress feedback, tactile haptics, 14-day nightly backups, mood trends, and life reflections.",
   "start_url": "index.html",
   "display": "standalone",
   "orientation": "portrait",
@@ -10,13 +10,13 @@
   "theme_color": "#141311",
   "icons": [
     {
-      "src": "icon-192.png?v=11",
+      "src": "icon-192.png?v=12",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "icon-512.png?v=11",
+      "src": "icon-512.png?v=12",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
